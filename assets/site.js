@@ -190,7 +190,32 @@
     });
   }
 
-  /* ---------------- playlist player ---------------- */
+  /* ---------------- URL detection + playback engines ---------------- */
+  function detectUrl(url){
+    if(!url) return {type:'none'};
+    const u = String(url).trim();
+    // YouTube (watch, embed, youtu.be, music.youtube)
+    const yt = u.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/|music\.youtube\.com\/watch\?v=)([\w-]{11})/);
+    if(yt) return {type:'youtube', id:yt[1], url:u};
+    // Spotify track
+    const sp = u.match(/open\.spotify\.com\/(?:intl-\w+\/)?track\/([\w]+)/);
+    if(sp) return {type:'spotify', id:sp[1], url:u};
+    // Direct audio (mp3/m4a/wav/ogg) or Cloudinary url
+    return {type:'audio', url:u};
+  }
+  let _ytReadyP = null;
+  function loadYTAPI(){
+    if(_ytReadyP) return _ytReadyP;
+    return _ytReadyP = new Promise(resolve=>{
+      if(window.YT && window.YT.Player){ resolve(); return; }
+      const tag=document.createElement('script');
+      tag.src='https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+      window.onYouTubeIframeAPIReady = ()=> resolve();
+    });
+  }
+
+  /* ---------------- playlist player UI ---------------- */
   function injectPlayer(){
     const p=document.createElement('div'); p.className='mplayer'; p.id='mplayer';
     p.innerHTML=`
@@ -211,6 +236,7 @@
         <div class="ctrl" id="mRepeat"  title="Ulang">🔁</div>
       </div>
       <div class="tracks" id="mTracks"><div class="empty">Belum ada lagu. Tambahkan dari Admin → Lagu.</div></div>
+      <div id="mYtFrame" style="position:absolute;left:-99999px;width:1px;height:1px;opacity:0;pointer-events:none"></div>
     `;
     document.body.appendChild(p);
   }
@@ -220,13 +246,14 @@
     const m=Math.floor(s/60), r=s%60;
     return `${m}:${String(r).padStart(2,'0')}`;
   }
+
   function wirePlayer(){
     const au   = document.getElementById('bgm');
     const btn  = document.getElementById('musicBtn');
     const panel= document.getElementById('mplayer');
     const closeBtn=document.getElementById('mClose');
     const pBar = document.getElementById('mBar'), pBox=document.getElementById('mProgress');
-    const cur  = document.getElementById('mCur'),  dur=document.getElementById('mDur');
+    const curEl= document.getElementById('mCur'),  durEl=document.getElementById('mDur');
     const titleEl=document.getElementById('mTitle'), artistEl=document.getElementById('mArtist');
     const playBtn=document.getElementById('mPlay'), prevBtn=document.getElementById('mPrev'),
           nextBtn=document.getElementById('mNext'), shufBtn=document.getElementById('mShuffle'),
@@ -237,73 +264,152 @@
       list: (PM.get().playlist||[]),
       idx: Math.min(parseInt(localStorage.getItem('pm-music-i')||'0',10)||0, Math.max(0,(PM.get().playlist||[]).length-1)),
       shuffle: localStorage.getItem('pm-music-shuffle')==='1',
-      repeat:  localStorage.getItem('pm-music-repeat')||'all',  // off | all | one
-      playing: false
+      repeat:  localStorage.getItem('pm-music-repeat')||'all',
+      playing: false,
+      engine: 'none' // 'audio' | 'youtube' | 'spotify' | 'none'
     };
 
-    function load(i, andPlay){
+    /* Engine abstraction — routes play control to YouTube/audio per URL type */
+    let ytPlayer = null;
+    function setPlayBtn(on){ playBtn.textContent = on?'⏸':'▶'; state.playing=on; if(btn) btn.classList.toggle('playing', on); localStorage.setItem('pm-music', on?'1':'0'); }
+
+    function tearDown(){
+      try{ au.pause(); }catch(e){}
+      if(ytPlayer){ try{ ytPlayer.stopVideo(); }catch(e){} }
+    }
+
+    async function loadTrack(i, andPlay){
       state.list = PM.get().playlist || [];
       if(!state.list.length){
+        tearDown();
         au.removeAttribute('src'); au.load();
         titleEl.textContent='Tidak ada lagu';
         artistEl.textContent='Tambah lagu lewat Admin';
-        playBtn.textContent='▶';
+        setPlayBtn(false);
         renderTracks();
         return;
       }
       i = Math.max(0, Math.min(i, state.list.length-1));
       state.idx = i;
       const t = state.list[i];
-      au.src = t.url;
+      const u = detectUrl(t.url);
       titleEl.textContent = t.title || 'Tanpa judul';
-      artistEl.textContent = t.artist || '—';
+      artistEl.textContent = (t.artist || '—') + ' · ' + (u.type==='youtube'?'YouTube':u.type==='spotify'?'Spotify':u.type==='audio'?'Audio':'?');
       localStorage.setItem('pm-music-i', String(i));
-      if(andPlay) au.play().then(()=>{}).catch(()=>{});
       renderTracks();
+
+      tearDown();
+      state.engine = u.type;
+
+      if(u.type==='audio'){
+        au.src = u.url;
+        if(andPlay) au.play().catch(()=>{});
+      } else if(u.type==='youtube'){
+        await loadYTAPI();
+        if(!ytPlayer){
+          ytPlayer = new YT.Player('mYtFrame', {
+            videoId: u.id,
+            playerVars: { autoplay: andPlay?1:0, controls:0, modestbranding:1, playsinline:1 },
+            events: {
+              onReady: (e)=>{ if(andPlay){ try{e.target.playVideo();}catch(_){}} },
+              onStateChange: (e)=>{
+                const S = YT.PlayerState;
+                if(e.data===S.PLAYING) setPlayBtn(true);
+                else if(e.data===S.PAUSED) setPlayBtn(false);
+                else if(e.data===S.ENDED) next();
+              }
+            }
+          });
+        } else {
+          try{
+            if(andPlay) ytPlayer.loadVideoById(u.id);
+            else ytPlayer.cueVideoById(u.id);
+          }catch(_){}
+        }
+      } else if(u.type==='spotify'){
+        // Spotify Web Embed cannot be controlled programmatically without OAuth.
+        // Fallback: open in new tab and show inline notice.
+        if(andPlay){
+          window.open(u.url, '_blank', 'noopener');
+          PM.notify('Spotify dibuka di tab baru. Kembali ke sini untuk lagu berikutnya.');
+        }
+        setPlayBtn(false);
+      } else {
+        PM.notify('Link lagu tidak dikenali: '+(t.url||'(kosong)'), {kind:'err'});
+        setPlayBtn(false);
+      }
     }
+
     function next(){
       if(!state.list.length) return;
-      if(state.repeat==='one'){ au.currentTime=0; au.play().catch(()=>{}); return; }
-      if(state.shuffle){
-        if(state.list.length===1){ au.currentTime=0; au.play().catch(()=>{}); return; }
+      if(state.repeat==='one'){ loadTrack(state.idx,true); return; }
+      if(state.shuffle && state.list.length>1){
         let n;do{n=Math.floor(Math.random()*state.list.length);}while(n===state.idx);
-        load(n,true); return;
+        loadTrack(n,true); return;
       }
       const last = state.idx >= state.list.length-1;
-      if(last && state.repeat==='off'){ au.pause(); setPlayBtn(false); return; }
-      load((state.idx+1) % state.list.length, true);
+      if(last && state.repeat==='off'){ setPlayBtn(false); return; }
+      loadTrack((state.idx+1) % state.list.length, true);
     }
     function prev(){
       if(!state.list.length) return;
-      if(au.currentTime>3){ au.currentTime=0; return; }
-      load((state.idx-1+state.list.length) % state.list.length, true);
+      const t = getCurrentTime();
+      if(t>3){ seekTo(0); return; }
+      loadTrack((state.idx-1+state.list.length) % state.list.length, true);
     }
-    function setPlayBtn(on){ playBtn.textContent = on?'⏸':'▶'; state.playing=on; if(btn) btn.classList.toggle('playing', on); }
+    function playPause(){
+      if(!state.list.length){ PM.notify('Belum ada lagu di playlist.', {kind:'err'}); return; }
+      if(state.engine==='audio'){
+        if(!au.src) loadTrack(state.idx,true);
+        else if(au.paused) au.play().catch(()=>{}); else au.pause();
+      } else if(state.engine==='youtube' && ytPlayer){
+        const s = ytPlayer.getPlayerState && ytPlayer.getPlayerState();
+        if(s===1) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+      } else if(state.engine==='spotify'){
+        const t = state.list[state.idx];
+        if(t && t.url) window.open(t.url, '_blank', 'noopener');
+      } else {
+        loadTrack(state.idx, true);
+      }
+    }
+    function seekTo(s){
+      if(state.engine==='audio'){ au.currentTime=s; }
+      else if(state.engine==='youtube' && ytPlayer && ytPlayer.seekTo){ ytPlayer.seekTo(s, true); }
+    }
+    function getCurrentTime(){
+      if(state.engine==='audio') return au.currentTime;
+      if(state.engine==='youtube' && ytPlayer && ytPlayer.getCurrentTime) return ytPlayer.getCurrentTime();
+      return 0;
+    }
+    function getDuration(){
+      if(state.engine==='audio') return au.duration || 0;
+      if(state.engine==='youtube' && ytPlayer && ytPlayer.getDuration) return ytPlayer.getDuration() || 0;
+      return 0;
+    }
+
     function renderTracks(){
       if(!state.list.length){ tracksEl.innerHTML='<div class="empty">Belum ada lagu. Tambahkan dari Admin → Lagu.</div>'; return; }
-      tracksEl.innerHTML = state.list.map((t,i)=>`
-        <div class="tk ${i===state.idx?'active':''}" data-i="${i}">
+      tracksEl.innerHTML = state.list.map((t,i)=>{
+        const u = detectUrl(t.url);
+        const badge = u.type==='youtube'?'▶ YT':u.type==='spotify'?'♪ SP':u.type==='audio'?'♪':'?';
+        return `<div class="tk ${i===state.idx?'active':''}" data-i="${i}">
           <span class="n">${String(i+1).padStart(2,'0')}</span>
           <div class="meta">
-            <div class="tt">${t.title||'Tanpa judul'}</div>
+            <div class="tt">${(t.title||'Tanpa judul')} <span style="font-family:'Caveat';font-size:12px;color:var(--muted)">${badge}</span></div>
             <div class="aa">${t.artist||'—'}</div>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
       tracksEl.querySelectorAll('.tk').forEach(el=>{
-        el.addEventListener('click',()=>{ load(+el.dataset.i, true); });
+        el.addEventListener('click',()=>{ loadTrack(+el.dataset.i, true); });
       });
     }
 
     /* events */
     if(btn) btn.addEventListener('click',()=>panel.classList.toggle('open'));
-    // expose a global toggle for pages without a navbar (e.g. landing)
     window.PMtogglePlayer = ()=>panel.classList.toggle('open');
     closeBtn.addEventListener('click',()=>panel.classList.remove('open'));
-    playBtn.addEventListener('click',()=>{
-      if(!state.list.length){ PM.notify('Belum ada lagu di playlist.', {kind:'err'}); return; }
-      if(!au.src) load(state.idx, true);
-      else if(au.paused) au.play().catch(()=>{}); else au.pause();
-    });
+    playBtn.addEventListener('click', playPause);
     prevBtn.addEventListener('click', prev);
     nextBtn.addEventListener('click', next);
     shufBtn.addEventListener('click',()=>{
@@ -318,43 +424,38 @@
       repBtn.textContent = state.repeat==='one'?'🔂':'🔁';
     });
     pBox.addEventListener('click',(e)=>{
-      if(!au.duration) return;
+      const dur = getDuration(); if(!dur) return;
       const rect=pBox.getBoundingClientRect();
-      au.currentTime = ((e.clientX-rect.left)/rect.width) * au.duration;
+      seekTo(((e.clientX-rect.left)/rect.width) * dur);
     });
 
+    /* audio engine events */
     au.addEventListener('play', ()=>setPlayBtn(true));
     au.addEventListener('pause', ()=>setPlayBtn(false));
     au.addEventListener('ended', next);
-    au.addEventListener('timeupdate', ()=>{
-      cur.textContent = fmtTime(au.currentTime);
-      dur.textContent = fmtTime(au.duration);
-      pBar.style.width = (au.duration ? (au.currentTime/au.duration*100) : 0) + '%';
-      if(!au.paused) localStorage.setItem('pm-music-t', String(au.currentTime));
-    });
+
+    /* unified time tick (works for audio + YouTube) */
+    setInterval(()=>{
+      const c = getCurrentTime(), d = getDuration();
+      curEl.textContent = fmtTime(c);
+      durEl.textContent = fmtTime(d);
+      pBar.style.width = (d ? (c/d*100) : 0) + '%';
+      if(state.playing && state.engine==='audio') localStorage.setItem('pm-music-t', String(c));
+    }, 500);
 
     /* restore state */
     if(state.shuffle) shufBtn.classList.add('on');
     if(state.repeat!=='off') repBtn.classList.add('on');
     if(state.repeat==='one') repBtn.textContent='🔂';
     if(state.list.length){
-      load(state.idx, false);
+      loadTrack(state.idx, false);
       const wasT = parseFloat(localStorage.getItem('pm-music-t')||'0')||0;
       if(wasT) au.addEventListener('loadedmetadata', ()=>{au.currentTime=wasT;}, {once:true});
-      if(localStorage.getItem('pm-music')==='1'){ au.play().catch(()=>{}); }
     } else {
       renderTracks();
     }
 
-    /* expose for landing standalone button */
-    window.PMplayer = { toggle: ()=>{
-      if(!state.list.length){ PM.notify('Belum ada lagu di playlist.', {kind:'err'}); return; }
-      if(au.paused){ if(!au.src) load(state.idx,true); else au.play().catch(()=>{}); localStorage.setItem('pm-music','1'); }
-      else { au.pause(); localStorage.setItem('pm-music','0'); }
-    }};
-    /* save play state */
-    au.addEventListener('play', ()=>localStorage.setItem('pm-music','1'));
-    au.addEventListener('pause',()=>localStorage.setItem('pm-music','0'));
+    window.PMplayer = { toggle: playPause };
   }
 
   /* ---------------- page transitions ---------------- */

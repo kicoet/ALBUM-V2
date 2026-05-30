@@ -140,7 +140,8 @@
     document.getElementById('ahead').style.display='flex';
     buildTabs();
   }
-  if(sessionStorage.getItem('pm-admin')==='1') showApp();
+  /* Auto-restore session moved to bottom of script — must run AFTER
+     const TABS is initialized to avoid Temporal Dead Zone crash. */
   function tryLogin(){
     const u=document.getElementById('user').value.trim();
     const p=document.getElementById('pass').value;
@@ -306,8 +307,12 @@
         {title:'Video Baru',date:'2024',desc:'Deskripsi singkat…',video:'',cover:''});
     else if(k==='songs'){
       if(!Array.isArray(data.playlist)) data.playlist=[];
-      listEditor(pane,'Playlist Lagu','Upload file MP3/audio. Player akan otomatis muncul di pojok kanan-bawah situs.',data.playlist,
-        [{label:'Judul',key:'title'},{label:'Artis / Penyanyi',key:'artist'},{label:'File Audio',key:'url',type:'upload-aud'}],
+      listEditor(pane,'Playlist Lagu','Paste link YouTube atau Spotify (track URL). Bisa juga link MP3 langsung. Player akan otomatis pakai engine yang sesuai.',data.playlist,
+        [
+          {label:'Judul',key:'title'},
+          {label:'Artis / Penyanyi',key:'artist'},
+          {label:'Link YouTube / Spotify / MP3', key:'url'}
+        ],
         {title:'Lagu Baru',artist:'',url:''});
     }
     else if(k==='settings'){
@@ -336,6 +341,11 @@
     flash('↺ Dikembalikan ke default.',false);
     window.PM.notify('Direset ke default lokal',{kind:'ok'});
   });
+
+  /* Auto-restore session — MUST be at bottom so const TABS is initialized.
+     Without this, refresh-after-login crashed buildTabs with a TDZ ReferenceError
+     leaving the tabbar empty. */
+  if(sessionStorage.getItem('pm-admin')==='1') showApp();
 </script>
 </body>
 </html>

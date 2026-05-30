@@ -1,16 +1,19 @@
 // ===========================================================
-// Album Ucapan-Ultah V2 — Firebase + Cloudinary cloud layer
-// Reuses Firebase project-website-ultah but isolates data in
-// the 'album_v2' Firestore collection so V1 is untouched.
+// Album Ucapan-Ultah V2 — Firebase Realtime Database + Cloudinary
+// Switched from Firestore to RTDB per user request — faster realtime
+// sync (sub-second) and simpler tree-based data model.
 // ===========================================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
 import {
-  initializeFirestore, doc, getDoc, setDoc, onSnapshot
-} from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+  getDatabase, ref, get, set, onValue
+} from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBK96f_cgTV3-a_3biyOR3EXQPVF2ueGGU',
   authDomain: 'ucapan-ultah-v2.firebaseapp.com',
+  // Realtime DB URL — auto-guess based on region. If your DB was created
+  // in a non-Asia region, override with the exact URL from Firebase Console.
+  databaseURL: 'https://ucapan-ultah-v2-default-rtdb.asia-southeast1.firebasedatabase.app',
   projectId: 'ucapan-ultah-v2',
   storageBucket: 'ucapan-ultah-v2.firebasestorage.app',
   messagingSenderId: '116948091313',
@@ -18,9 +21,10 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+const db = getDatabase(app);
 
-const DOC = doc(db, 'album_v2', 'main');
+// Path: /album_v2/main → holds { content, updatedAt }
+const NODE = ref(db, 'album_v2/main');
 
 // ---------- Cloudinary (file storage) ----------
 const CLOUDINARY_CLOUD  = 'dqgelhy0d';
@@ -51,11 +55,6 @@ async function uploadDataUrl(dataUrl, folder) {
 // ---------- Cloud pull/push ----------
 const STORAGE_KEY = 'pm-content';
 
-function getLocal() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
-  catch { return null; }
-}
-
 function applyRemote(cloud) {
   if (!cloud) return false;
   const current = localStorage.getItem(STORAGE_KEY);
@@ -68,9 +67,10 @@ function applyRemote(cloud) {
 
 async function pullCloud() {
   try {
-    const snap = await getDoc(DOC);
+    const snap = await get(NODE);
     if (snap.exists()) {
-      const cloud = snap.data().content;
+      const v = snap.val();
+      const cloud = v && v.content ? v.content : v; // support both wrapped + flat
       if (cloud) {
         applyRemote(cloud);
         return cloud;
@@ -86,9 +86,9 @@ let lastPushSerialized = null;
 async function pushCloud(content) {
   try {
     const ser = JSON.stringify(content);
-    if (ser === lastPushSerialized) return true; // skip dup pushes
+    if (ser === lastPushSerialized) return true;
     lastPushSerialized = ser;
-    await setDoc(DOC, { content, updatedAt: Date.now() });
+    await set(NODE, { content, updatedAt: Date.now() });
     return true;
   } catch (e) {
     console.error('[cloud] push failed:', e?.message || e);
@@ -102,22 +102,23 @@ window.CLOUD = {
   pushCloud,
   upload: cloudinaryUpload,
   uploadDataUrl,
-  ready: pullCloud(), // promise — pages can await this if needed
+  ready: pullCloud(),
 };
 window.dispatchEvent(new CustomEvent('cloud-init'));
 
-// Realtime subscribe so multi-device edits propagate within seconds.
+// Realtime subscribe — RTDB is sub-second sync
 try {
-  onSnapshot(DOC, (snap) => {
+  onValue(NODE, (snap) => {
     if (!snap.exists()) return;
-    const cloud = snap.data().content;
+    const v = snap.val();
+    const cloud = v && v.content ? v.content : v;
     if (cloud) applyRemote(cloud);
   }, (err) => console.warn('[cloud] subscribe failed:', err?.message || err));
 } catch (e) {
   console.warn('[cloud] no realtime subscribe:', e?.message || e);
 }
 
-// Refresh on tab refocus (mobile PWA aware)
+// Refresh on tab refocus
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') pullCloud();
 });
