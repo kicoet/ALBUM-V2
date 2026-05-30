@@ -9,18 +9,17 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyCY6ptzYzoVX4nfzpdjDVYw_g5asmWpfw8',
-  authDomain: 'project-website-ultah.firebaseapp.com',
-  projectId: 'project-website-ultah',
-  storageBucket: 'project-website-ultah.firebasestorage.app',
-  messagingSenderId: '1026782360639',
-  appId: '1:1026782360639:web:dca5e060285d64348db48a',
+  apiKey: 'AIzaSyBK96f_cgTV3-a_3biyOR3EXQPVF2ueGGU',
+  authDomain: 'ucapan-ultah-v2.firebaseapp.com',
+  projectId: 'ucapan-ultah-v2',
+  storageBucket: 'ucapan-ultah-v2.firebasestorage.app',
+  messagingSenderId: '116948091313',
+  appId: '1:116948091313:web:9aaf7a7547ef780e22bd90',
 };
 
 const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 
-// Distinct collection from V1 (which uses "greeting/main") so V1 + V2 coexist.
 const DOC = doc(db, 'album_v2', 'main');
 
 // ---------- Cloudinary (file storage) ----------
