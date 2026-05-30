@@ -35,7 +35,9 @@
   .loginbox .err{color:var(--accent);font-family:'Caveat';font-weight:700;font-size:18px;margin-top:12px;min-height:24px}
 
   /* panel */
-  .panel{position:relative;z-index:5;max-width:880px;margin:0 auto;padding:96px 20px 80px}
+  .panel{position:relative;z-index:5;max-width:880px;margin:0 auto;
+    padding:96px 20px calc(140px + env(safe-area-inset-bottom))}
+  @media(max-width:560px){ .panel{ padding-bottom:calc(180px + env(safe-area-inset-bottom)) } }
   .tabbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px;position:sticky;top:74px;z-index:6;
     background:color-mix(in srgb,var(--paper) 80%,transparent);backdrop-filter:blur(8px);padding:8px;
     border:3px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--shadow)}
@@ -63,9 +65,16 @@
   .addbtn:hover{background:var(--primary)}
 
   .savebar{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;align-items:center;justify-content:space-between;
-    gap:12px;padding:14px clamp(16px,4vw,32px);background:var(--card);border-top:3px solid var(--ink);flex-wrap:wrap}
-  .savebar .note{font-family:'Caveat';font-weight:600;font-size:17px;color:var(--muted)}
+    gap:12px;padding:14px clamp(16px,4vw,32px) calc(14px + env(safe-area-inset-bottom));
+    background:var(--card);border-top:3px solid var(--ink);flex-wrap:wrap}
+  .savebar .note{font-family:'Caveat';font-weight:600;font-size:17px;color:var(--muted);flex:1;min-width:140px}
   .savebar .saved{color:#2e8b57}
+  @media(max-width:560px){
+    .savebar{padding:10px 14px calc(10px + env(safe-area-inset-bottom));gap:8px}
+    .savebar .note{display:none}
+    .savebar .acts{flex:1;display:flex;gap:8px}
+    .savebar .acts > .btn{flex:1;justify-content:center;font-size:14px !important;padding:10px 12px !important}
+  }
   .secthead{font-family:'Patrick Hand';font-size:24px;color:var(--ink);margin:4px 0 16px;display:flex;align-items:center;gap:10px}
   .hint{font-family:'Caveat';font-weight:600;font-size:16px;color:var(--muted);margin-bottom:18px;
     background:var(--card);border:2.5px dashed var(--ink);border-radius:12px;padding:12px 16px}
@@ -104,9 +113,9 @@
 
   <div class="savebar" id="savebar" style="display:none">
     <span class="note" id="saveNote">Tekan <b>Simpan</b> untuk push perubahan ke cloud.</span>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn ghost" id="resetBtn" style="font-size:15px;padding:10px 18px">↺ Reset Default</button>
-      <button class="btn" id="saveBtn" style="font-size:17px;padding:11px 26px">💾 Simpan Perubahan</button>
+    <div class="acts" style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn ghost" id="resetBtn" style="font-size:15px;padding:10px 18px">↺ Reset</button>
+      <button class="btn" id="saveBtn" style="font-size:17px;padding:11px 26px">💾 Simpan</button>
     </div>
   </div>
 
@@ -155,6 +164,57 @@
     inp.addEventListener('input',()=>oninput(inp.value));
     f.appendChild(inp);return f;
   }
+  /* uploadField: pick file from device → push to Cloudinary → store secure_url
+     kind = 'img' | 'vid' (controls accept + preview + folder) */
+  function uploadField(label,val,oninput,kind){
+    const accept = kind==='vid' ? 'video/*' : kind==='aud' ? 'audio/*' : 'image/*';
+    const folder = kind==='vid' ? 'album-v2/videos' : kind==='aud' ? 'album-v2/audio' : 'album-v2/images';
+    const f=document.createElement('div');f.className='field';
+    f.innerHTML=`<label>${label}</label>`;
+    const wrap=document.createElement('div');wrap.className='upfield';
+    const preview=document.createElement('div');preview.className='preview';
+    const ctrls=document.createElement('div');ctrls.className='controls';
+    let current = val || '';
+    function renderPreview(){
+      if(!current){ preview.innerHTML = `<span>belum<br>diupload</span>`; return; }
+      if(kind==='vid') preview.innerHTML = `<video src="${current}" muted></video>`;
+      else if(kind==='aud') preview.innerHTML = `<span style="font-size:28px">🎵</span>`;
+      else             preview.innerHTML = `<img src="${current}" alt=""/>`;
+    }
+    renderPreview();
+    const pick=document.createElement('label');pick.className='pickbtn';
+    pick.innerHTML=`<span>📤 Pilih ${kind==='vid'?'video':kind==='aud'?'lagu':'gambar'}</span>`;
+    const fileInp=document.createElement('input');fileInp.type='file';fileInp.accept=accept;
+    pick.appendChild(fileInp);
+    const status=document.createElement('div');status.className='status';
+    status.textContent = current ? 'Siap. Pilih file baru untuk ganti.' : '';
+    fileInp.addEventListener('change', async ()=>{
+      const file = fileInp.files[0]; if(!file) return;
+      if(!window.CLOUD || !window.CLOUD.upload){
+        status.textContent='Cloud belum siap, coba ulangi sebentar.'; status.className='status err';
+        return;
+      }
+      status.textContent=`Mengunggah… ${(file.size/1024/1024).toFixed(1)}MB`;
+      status.className='status';
+      try{
+        const url = await window.CLOUD.upload(file, folder);
+        current = url; oninput(url); renderPreview();
+        status.textContent='✓ Berhasil diunggah'; status.className='status ok';
+      }catch(e){
+        status.textContent='✗ Gagal: '+(e.message||e); status.className='status err';
+      }
+    });
+    const clear=document.createElement('button');clear.className='clear';clear.type='button';
+    clear.textContent='Hapus file';
+    clear.addEventListener('click',()=>{
+      current=''; oninput(''); renderPreview();
+      status.textContent='File dihapus dari entri ini.'; status.className='status';
+    });
+    ctrls.appendChild(pick); ctrls.appendChild(status); ctrls.appendChild(clear);
+    wrap.appendChild(preview); wrap.appendChild(ctrls);
+    f.appendChild(wrap);
+    return f;
+  }
   function listEditor(pane,title,hint,arr,fields,blank){
     const h=document.createElement('div');h.className='secthead';h.textContent=title;pane.appendChild(h);
     if(hint){const hh=document.createElement('div');hh.className='hint';hh.textContent=hint;pane.appendChild(hh);}
@@ -165,9 +225,18 @@
         const card=document.createElement('div');card.className='item nbox';
         const idx=document.createElement('div');idx.className='idx';idx.textContent='#'+(i+1);card.appendChild(idx);
         const rm=document.createElement('button');rm.className='rm';rm.textContent='✕';
-        rm.addEventListener('click',()=>{arr.splice(i,1);render();});card.appendChild(rm);
+        rm.addEventListener('click', async ()=>{
+          const ok = await window.PM.confirm({title:'Hapus entri?',body:'Entri ini akan dihilangkan. Tetap simpan untuk push ke cloud.',okText:'Hapus',cancelText:'Batal'});
+          if(ok){arr.splice(i,1);render();}
+        });
+        card.appendChild(rm);
         fields.forEach(fd=>{
-          card.appendChild(field(fd.label,item[fd.key],v=>item[fd.key]=fd.num?(+v):v,fd.type||'text'));
+          if(fd.type==='upload-img' || fd.type==='upload-vid' || fd.type==='upload-aud'){
+            const kind = fd.type==='upload-vid'?'vid':fd.type==='upload-aud'?'aud':'img';
+            card.appendChild(uploadField(fd.label,item[fd.key],v=>item[fd.key]=v,kind));
+          } else {
+            card.appendChild(field(fd.label,item[fd.key],v=>item[fd.key]=fd.num?(+v):v,fd.type||'text'));
+          }
         });
         host.appendChild(card);
       });
@@ -186,6 +255,7 @@
     {k:'notes',t:'Surat'},
     {k:'moments',t:'Momen'},
     {k:'videos',t:'Video'},
+    {k:'songs',t:'Lagu'},
     {k:'settings',t:'Sandi'}
   ];
   function buildTabs(){
@@ -216,24 +286,30 @@
       listEditor(pane,'Milestone Counter','Kartu “sekian hari sejak …” di halaman Our Story.',data.counter,
         [{label:'Label',key:'label'},{label:'Tanggal',key:'date',type:'date'}],{label:'Momen Baru',date:'2022-01-01'});
     else if(k==='timeline')
-      listEditor(pane,'Garis Waktu','Tiap entri jadi satu kartu di timeline Our Story.',data.timeline,
-        [{label:'Tanggal',key:'date',type:'date'},{label:'Judul',key:'title'},{label:'Cerita',key:'story',type:'area'}],
-        {date:'2022-01-01',title:'Judul Momen',story:'Ceritanya di sini…'});
+      listEditor(pane,'Garis Waktu','Tiap entri jadi satu kartu di timeline Our Story. Upload foto opsional.',data.timeline,
+        [{label:'Tanggal',key:'date',type:'date'},{label:'Judul',key:'title'},{label:'Cerita',key:'story',type:'area'},{label:'Foto Momen',key:'img',type:'upload-img'}],
+        {date:'2022-01-01',title:'Judul Momen',story:'Ceritanya di sini…',img:''});
     else if(k==='gallery')
-      listEditor(pane,'Galeri','Caption foto. (File foto asli ditaruh nanti — sekarang masih placeholder.)',data.gallery,
-        [{label:'Caption',key:'cap'}],{cap:'Kenangan baru',tall:false});
+      listEditor(pane,'Galeri','Caption + foto. Upload langsung dari device-mu.',data.gallery,
+        [{label:'Caption',key:'cap'},{label:'Foto',key:'img',type:'upload-img'}],{cap:'Kenangan baru',tall:false,img:''});
     else if(k==='notes')
       listEditor(pane,'Surat & Pesan','Surat cinta yang muncul dengan efek ketik.',data.notes,
         [{label:'Judul',key:'title'},{label:'Dari',key:'from'},{label:'Isi Surat',key:'body',type:'area'}],
-        {title:'Surat Baru',from:'Padzli',body:'Tulis isi suratnya di sini…'});
+        {title:'Surat Baru',from:'Penulis',body:'Tulis isi suratnya di sini…'});
     else if(k==='moments')
-      listEditor(pane,'Momen Spesial','Emoji + judul + tanggal + deskripsi singkat.',data.moments,
-        [{label:'Emoji',key:'emoji'},{label:'Judul',key:'title'},{label:'Tanggal',key:'date',type:'date'},{label:'Deskripsi',key:'desc',type:'area'}],
-        {emoji:'✨',title:'Momen Baru',date:'2022-01-01',desc:'Deskripsi singkat…'});
+      listEditor(pane,'Momen Spesial','Emoji + judul + tanggal + deskripsi + foto.',data.moments,
+        [{label:'Emoji',key:'emoji'},{label:'Judul',key:'title'},{label:'Tanggal',key:'date',type:'date'},{label:'Deskripsi',key:'desc',type:'area'},{label:'Foto',key:'img',type:'upload-img'}],
+        {emoji:'✨',title:'Momen Baru',date:'2022-01-01',desc:'Deskripsi singkat…',img:''});
     else if(k==='videos')
-      listEditor(pane,'Video','Judul + tahun + deskripsi. (File video diunggah nanti.)',data.videos,
-        [{label:'Judul',key:'title'},{label:'Tahun',key:'date'},{label:'Deskripsi',key:'desc',type:'area'}],
-        {title:'Video Baru',date:'2024',desc:'Deskripsi singkat…'});
+      listEditor(pane,'Video','Upload file video langsung. Cover opsional (jika kosong dipakai poster otomatis).',data.videos,
+        [{label:'Judul',key:'title'},{label:'Tahun',key:'date'},{label:'Deskripsi',key:'desc',type:'area'},{label:'File Video',key:'video',type:'upload-vid'},{label:'Thumbnail (opsional)',key:'cover',type:'upload-img'}],
+        {title:'Video Baru',date:'2024',desc:'Deskripsi singkat…',video:'',cover:''});
+    else if(k==='songs'){
+      if(!Array.isArray(data.playlist)) data.playlist=[];
+      listEditor(pane,'Playlist Lagu','Upload file MP3/audio. Player akan otomatis muncul di pojok kanan-bawah situs.',data.playlist,
+        [{label:'Judul',key:'title'},{label:'Artis / Penyanyi',key:'artist'},{label:'File Audio',key:'url',type:'upload-aud'}],
+        {title:'Lagu Baru',artist:'',url:''});
+    }
     else if(k==='settings'){
       pane.innerHTML='<div class="secthead">Kredensial Admin</div><div class="hint">Ubah username &amp; password untuk masuk ke panel ini. Sinkron antar perangkat lewat cloud.</div>';
       pane.appendChild(field('Username',data.settings.adminUser||'Admin',v=>data.settings.adminUser=v));
@@ -244,11 +320,21 @@
   /* ---- save / reset ---- */
   function flash(msg,ok){const n=document.getElementById('saveNote');n.innerHTML=msg;n.classList.toggle('saved',!!ok);
     setTimeout(()=>{n.innerHTML='Tekan <b>Simpan</b> untuk push perubahan ke cloud.';n.classList.remove('saved');},2600);}
-  document.getElementById('saveBtn').addEventListener('click',()=>{window.PM.save(data);flash('✓ Tersimpan & ter-sync ke semua perangkat.',true);});
-  document.getElementById('resetBtn').addEventListener('click',()=>{
-    if(confirm('Kembalikan semua konten ke contoh awal? Perubahanmu akan hilang.')){
-      window.PM.reset();data=window.PM.get();buildTabs();flash('↺ Dikembalikan ke default.',false);
-    }
+  document.getElementById('saveBtn').addEventListener('click',()=>{
+    window.PM.save(data);
+    flash('✓ Tersimpan & ter-sync ke semua perangkat.',true);
+    window.PM.notify('Perubahan tersimpan & ter-sync ke cloud',{kind:'ok'});
+  });
+  document.getElementById('resetBtn').addEventListener('click',async ()=>{
+    const ok = await window.PM.confirm({
+      title:'Reset ke contoh awal?',
+      body:'Semua perubahan yang belum di-push ke cloud akan hilang dari layar. Untuk benar-benar menggantikan data di cloud, tekan Simpan setelah reset.',
+      icon:'↺', okText:'Reset', cancelText:'Batal'
+    });
+    if(!ok) return;
+    window.PM.reset(); data=window.PM.get(); buildTabs();
+    flash('↺ Dikembalikan ke default.',false);
+    window.PM.notify('Direset ke default lokal',{kind:'ok'});
   });
 </script>
 </body>

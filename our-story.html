@@ -130,9 +130,12 @@
   const tl=document.getElementById('timeline');
   c.timeline.forEach((t,i)=>{
     const node=document.createElement('div');node.className='tnode reveal';
+    const phInner = t.img
+      ? `<img src="${t.img}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"/>`
+      : `<span class="pl">📷 Foto momen</span>`;
     node.innerHTML=`
       <div class="tcard nbox ${i%2?'tilt-r':'tilt-l'}">
-        <div class="ph"><span class="pl">📷 Foto momen</span></div>
+        <div class="ph">${phInner}</div>
         <div class="body">
           <span class="yr">${window.PM.fmtDate(t.date)}</span>
           <h3>${t.title}</h3>

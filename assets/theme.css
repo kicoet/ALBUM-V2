@@ -183,3 +183,98 @@ h1,h2,h3{font-family:'Patrick Hand',cursive;font-weight:400;line-height:.98;lett
 /* utility */
 .center{text-align:center}
 .mt-s{margin-top:18px}.mt-m{margin-top:30px}.mt-l{margin-top:48px}
+
+/* ============== TOAST ============== */
+#pm-toasts{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:1000;
+  display:flex;flex-direction:column;gap:10px;width:min(90vw,420px);pointer-events:none;
+  padding-top:env(safe-area-inset-top)}
+.pm-toast{pointer-events:auto;background:var(--card);border:3px solid var(--ink);border-radius:14px;
+  box-shadow:6px 6px 0 var(--shadow);padding:12px 16px;display:flex;align-items:center;gap:12px;
+  font-family:'Comic Neue';font-weight:700;font-size:14px;color:var(--ink);
+  transform:translateY(-20px);opacity:0;transition:transform .35s cubic-bezier(.2,.8,.2,1),opacity .35s}
+.pm-toast.in{transform:none;opacity:1}
+.pm-toast .ic{flex:0 0 28px;height:28px;border-radius:50%;border:2.5px solid var(--ink);
+  background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:14px}
+.pm-toast.ok .ic{background:#A8E6A1}
+.pm-toast.err .ic{background:var(--accent);color:#fff}
+
+/* ============== DIALOG (alert / confirm) ============== */
+.pm-dialog{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(10,8,4,.78);backdrop-filter:blur(8px);
+  opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+.pm-dialog.open{opacity:1;visibility:visible}
+.pm-dialog .box{background:var(--card);border:3px solid var(--ink);border-radius:18px;
+  box-shadow:10px 10px 0 var(--shadow);padding:30px 28px;max-width:440px;width:100%;
+  transform:scale(.85) rotate(-2deg);transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+.pm-dialog.open .box{transform:none}
+.pm-dialog .di{width:60px;height:60px;border-radius:50%;background:var(--primary);
+  border:3px solid var(--ink);box-shadow:4px 4px 0 var(--shadow);display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin:0 auto 16px}
+.pm-dialog h3{font-family:'Patrick Hand';font-size:26px;color:var(--ink);text-align:center;margin-bottom:8px}
+.pm-dialog p{font-family:'Comic Neue';font-size:14px;line-height:1.55;color:var(--muted);text-align:center}
+.pm-dialog .row{display:flex;gap:10px;margin-top:22px;flex-direction:row-reverse}
+.pm-dialog .row .btn{flex:1;justify-content:center;font-size:16px;padding:11px 18px}
+
+/* ============== UPLOAD FIELD ============== */
+.upfield{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.upfield .preview{flex:0 0 92px;height:92px;border:2.5px solid var(--ink);border-radius:10px;
+  background:var(--primary-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);font-size:11px;text-align:center;padding:6px}
+.upfield .preview img{width:100%;height:100%;object-fit:cover}
+.upfield .preview video{width:100%;height:100%;object-fit:cover}
+.upfield .controls{flex:1;min-width:170px;display:flex;flex-direction:column;gap:6px}
+.upfield .pickbtn{cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+  font-family:'Patrick Hand';font-size:14px;color:var(--ink);
+  background:var(--primary);border:2.5px solid var(--ink);border-radius:10px;padding:8px 14px;
+  box-shadow:3px 3px 0 var(--shadow);align-self:flex-start;transition:transform .15s,box-shadow .15s}
+.upfield .pickbtn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--shadow)}
+.upfield .pickbtn input{display:none}
+.upfield .status{font-family:'Caveat';font-weight:600;font-size:15px;color:var(--muted);min-height:18px}
+.upfield .status.ok{color:#2e8b57}
+.upfield .status.err{color:var(--accent)}
+.upfield .clear{font-family:'Caveat';font-weight:600;font-size:14px;color:var(--accent);
+  background:none;border:none;cursor:pointer;align-self:flex-start;padding:0}
+
+/* ============== MUSIC PLAYER PANEL ============== */
+.mplayer{position:fixed;right:max(16px,env(safe-area-inset-right));
+  bottom:max(16px,env(safe-area-inset-bottom));z-index:45;
+  background:var(--card);border:3px solid var(--ink);border-radius:18px;
+  box-shadow:8px 8px 0 var(--shadow);
+  width:min(360px,90vw);
+  transform:translateY(20px) scale(.95);opacity:0;visibility:hidden;
+  transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .3s,visibility .3s;
+  display:flex;flex-direction:column;overflow:hidden}
+.mplayer.open{transform:none;opacity:1;visibility:visible}
+.mplayer .mhead{padding:14px 16px;border-bottom:3px solid var(--ink);
+  display:flex;align-items:center;gap:10px}
+.mplayer .mhead .now{flex:1;min-width:0}
+.mplayer .mhead .now .t{font-family:'Patrick Hand';font-size:17px;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mplayer .mhead .now .a{font-family:'Caveat';font-weight:600;font-size:14px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mplayer .mhead .close{cursor:pointer;width:32px;height:32px;border-radius:50%;border:2.5px solid var(--ink);
+  background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ink);
+  flex-shrink:0;box-shadow:2px 2px 0 var(--shadow)}
+.mplayer .progress{height:6px;background:var(--primary-soft);position:relative;border-bottom:3px solid var(--ink);cursor:pointer}
+.mplayer .progress .bar{height:100%;background:var(--accent);width:0%}
+.mplayer .times{display:flex;justify-content:space-between;padding:4px 14px 0;
+  font-family:'Comic Neue';font-weight:700;font-size:11px;color:var(--muted)}
+.mplayer .controls{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 14px}
+.mplayer .ctrl{cursor:pointer;width:42px;height:42px;border-radius:50%;border:2.5px solid var(--ink);
+  background:var(--card);display:flex;align-items:center;justify-content:center;
+  font-size:18px;box-shadow:3px 3px 0 var(--shadow);transition:transform .15s,box-shadow .15s}
+.mplayer .ctrl:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--shadow)}
+.mplayer .ctrl.big{width:56px;height:56px;background:var(--primary);font-size:22px}
+.mplayer .ctrl.on{background:var(--accent);color:#fff}
+.mplayer .tracks{max-height:240px;overflow:auto;border-top:3px solid var(--ink)}
+.mplayer .tracks .tk{padding:11px 14px;border-bottom:1.5px solid var(--ink);cursor:pointer;
+  display:flex;align-items:center;gap:10px;transition:background .15s}
+.mplayer .tracks .tk:last-child{border-bottom:0}
+.mplayer .tracks .tk:hover{background:var(--primary-soft)}
+.mplayer .tracks .tk.active{background:var(--primary)}
+.mplayer .tracks .tk .n{flex:0 0 24px;font-family:'Caveat';font-weight:700;font-size:14px;color:var(--muted)}
+.mplayer .tracks .tk .meta{flex:1;min-width:0}
+.mplayer .tracks .tk .meta .tt{font-family:'Patrick Hand';font-size:14px;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mplayer .tracks .tk .meta .aa{font-family:'Caveat';font-weight:600;font-size:13px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mplayer .empty{padding:30px 16px;text-align:center;font-family:'Caveat';font-weight:600;font-size:16px;color:var(--muted)}

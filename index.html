@@ -111,13 +111,19 @@
     const m=root.getAttribute('data-mode')==='dark'?'light':'dark';
     root.setAttribute('data-mode',m);localStorage.setItem('pm-mode',m);syncMode();
   });
+  // Landing music button: opens the floating player panel (which has full
+  // playlist + controls). Wait until site.js has injected the player.
   const mBtn=document.getElementById('musicBtn2');
   mBtn.addEventListener('click',()=>{
-    const au=document.getElementById('bgm');
-    if(mBtn.classList.contains('playing')){mBtn.classList.remove('playing');au.pause();localStorage.setItem('pm-music','0');}
-    else{mBtn.classList.add('playing');if(!au.src)au.src=au.dataset.src;au.play().catch(()=>{});localStorage.setItem('pm-music','1');}
+    if(window.PMtogglePlayer) window.PMtogglePlayer();
+    else PM.notify('Player belum siap, coba sebentar lagi.');
   });
-  if(localStorage.getItem('pm-music')==='1')mBtn.classList.add('playing');
+  // Mirror playing state to standalone button
+  setInterval(()=>{
+    const au=document.getElementById('bgm');
+    if(!au) return;
+    mBtn.classList.toggle('playing', !au.paused);
+  }, 400);
 
   // loader → hero
   window.addEventListener('load',()=>{setTimeout(()=>{
