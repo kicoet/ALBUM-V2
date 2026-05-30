@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Our Story · Padzli & Miskah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Patrick+Hand&display=swap" rel="stylesheet" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#FF9F1C" />
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="assets/theme.css" />
+<style>
+  /* counter */
+  .counter{display:flex;flex-wrap:wrap;justify-content:center;gap:18px;margin-top:14px}
+  .cbox{min-width:128px;padding:22px 18px;text-align:center}
+  .cbox .num{font-family:'Patrick Hand';font-size:clamp(40px,6vw,62px);line-height:1;color:var(--ink)}
+  .cbox .lab{font-family:'Caveat';font-weight:700;font-size:19px;color:var(--accent);margin-top:6px}
+  .totaldays{font-family:'Caveat';font-weight:700;font-size:22px;color:var(--muted);margin-top:24px}
+  .totaldays b{color:var(--ink)}
+
+  .milestones{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin-top:40px}
+  .mile{padding:14px 20px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:150px}
+  .mile .d{font-family:'Patrick Hand';font-size:26px;color:var(--accent)}
+  .mile .l{font-family:'Comic Neue';font-weight:700;font-size:13px;color:var(--muted)}
+  .mile .dt{font-family:'Caveat';font-weight:600;font-size:16px;color:var(--ink)}
+
+  /* timeline */
+  .timeline{position:relative;max-width:980px;margin:0 auto;padding:20px 0}
+  .timeline::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:4px;
+    background:repeating-linear-gradient(var(--ink) 0 12px, transparent 12px 22px);
+    transform:translateX(-50%);border-radius:4px}
+  .tnode{position:relative;display:grid;grid-template-columns:1fr 64px 1fr;align-items:center;margin-bottom:42px}
+  .tcard{padding:0;overflow:hidden}
+  .tcard .ph{height:190px;width:100%;border:0;border-bottom:3px solid var(--ink)}
+  .tcard .body{padding:20px 22px 24px}
+  .tcard .yr{display:inline-block;font-family:'Patrick Hand';font-size:14px;background:var(--primary);
+    border:2.5px solid var(--ink);border-radius:100px;padding:3px 13px;box-shadow:3px 3px 0 var(--shadow);margin-bottom:12px}
+  .tcard h3{font-size:27px;color:var(--ink)}
+  .tcard p{margin-top:9px;font-size:15px;line-height:1.65;color:var(--muted)}
+  .tdot{justify-self:center;width:34px;height:34px;border-radius:50%;background:var(--accent);
+    border:3.5px solid var(--ink);box-shadow:0 0 0 6px var(--paper),4px 4px 0 var(--shadow);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;z-index:2}
+  .tnode:nth-child(even) .tcard{grid-column:3}
+  .tnode:nth-child(even) .spacer{grid-column:1}
+  .tnode .spacer{grid-column:1}
+  .tnode:nth-child(odd) .tcard{grid-column:1}
+  .tnode:nth-child(odd) .spacer{grid-column:3}
+
+  @media(max-width:760px){
+    .timeline::before{left:26px}
+    .tnode{grid-template-columns:52px 1fr;gap:6px}
+    .tnode .spacer{display:none}
+    .tnode:nth-child(even) .tcard,.tnode:nth-child(odd) .tcard{grid-column:2}
+    .tdot{grid-column:1;justify-self:center}
+  }
+
+  .endcap{text-align:center;margin-top:30px}
+  .endcap .h{font-family:'Caveat';font-weight:700;font-size:30px;color:var(--accent)}
+</style>
+</head>
+<body data-page="our-story">
+  <div class="pagewrap">
+    <div class="topgap"></div>
+
+    <!-- counter -->
+    <section class="section" style="padding-bottom:40px">
+      <div class="container">
+        <div class="page-head reveal">
+          <span class="eyebrow">Perjalanan Kami</span>
+          <h1>Our Story</h1>
+          <p>Setiap angka di bawah ini adalah waktu yang kami habiskan untuk saling memilih — lagi dan lagi.</p>
+        </div>
+        <div class="reveal center">
+          <div class="counter" id="counter"></div>
+          <p class="totaldays" id="totalDays"></p>
+        </div>
+        <div class="milestones reveal" id="milestones"></div>
+      </div>
+    </section>
+
+    <!-- timeline -->
+    <section class="section" style="padding-top:20px">
+      <div class="container">
+        <div class="page-head reveal" style="margin-bottom:40px">
+          <span class="eyebrow">Bab demi Bab</span>
+          <h1 style="font-size:clamp(34px,6vw,60px)">Garis Waktu Kami</h1>
+        </div>
+        <div class="timeline" id="timeline"></div>
+        <div class="endcap reveal">
+          <div class="h">…dan ceritanya masih terus berlanjut ❤</div>
+          <a class="btn ghost mt-m" href="gallery.html" data-link>Lihat Galeri Kenangan <span class="ar">→</span></a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="fbrand">Padzli <span class="hh">&amp;</span> Miskah</div>
+      <p>ditulis dengan cinta · 2022 — selamanya</p>
+      <a class="fadmin" href="admin.html" data-link>· kelola konten ·</a>
+    </footer>
+  </div>
+
+<script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
+<script>
+  const c=window.PM.get();
+
+  // counter
+  const bd=window.PM.breakdown(c.couple.since);
+  const counter=document.getElementById('counter');
+  [['Tahun',bd.y],['Bulan',bd.m],['Hari',bd.d]].forEach(([lab,val])=>{
+    const el=document.createElement('div');el.className='cbox nbox tilt-l';
+    el.innerHTML=`<div class="num" data-to="${val}">0</div><div class="lab">${lab}</div>`;
+    counter.appendChild(el);
+  });
+  document.getElementById('totalDays').innerHTML=`Itu artinya <b>${bd.total.toLocaleString('id-ID')} hari</b> penuh kebersamaan ✦`;
+
+  // milestones
+  const mil=document.getElementById('milestones');
+  c.counter.forEach(m=>{
+    const days=window.PM.daysSince(m.date);
+    const el=document.createElement('div');el.className='mile nbox tilt-r';
+    el.innerHTML=`<div class="d">${days.toLocaleString('id-ID')}</div><div class="l">hari sejak</div><div class="dt">${m.label}</div>`;
+    mil.appendChild(el);
+  });
+
+  // timeline
+  const tl=document.getElementById('timeline');
+  c.timeline.forEach((t,i)=>{
+    const node=document.createElement('div');node.className='tnode reveal';
+    node.innerHTML=`
+      <div class="tcard nbox ${i%2?'tilt-r':'tilt-l'}">
+        <div class="ph"><span class="pl">📷 Foto momen</span></div>
+        <div class="body">
+          <span class="yr">${window.PM.fmtDate(t.date)}</span>
+          <h3>${t.title}</h3>
+          <p>${t.story}</p>
+        </div>
+      </div>
+      <div class="tdot">❤</div>
+      <div class="spacer"></div>`;
+    tl.appendChild(node);
+  });
+
+  // animate counter numbers when seen
+  function animateNum(el){
+    const to=+el.dataset.to;let s=null;const dur=1100;
+    function step(ts){if(!s)s=ts;const p=Math.min((ts-s)/dur,1);
+      el.textContent=Math.round(to*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(step);}
+    requestAnimationFrame(step);
+  }
+  const numIO=new IntersectionObserver((ents,o)=>{ents.forEach(e=>{if(e.isIntersecting){animateNum(e.target);o.unobserve(e.target);}});},{threshold:.5});
+  document.querySelectorAll('.num').forEach(n=>numIO.observe(n));
+
+  window.PMreveal();
+</script>
+</body>
+</html>

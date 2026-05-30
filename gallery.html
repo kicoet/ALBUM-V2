@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gallery · Padzli & Miskah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Patrick+Hand&display=swap" rel="stylesheet" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#FF9F1C" />
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="assets/theme.css" />
+<style>
+  .masonry{column-count:4;column-gap:20px}
+  @media(max-width:1100px){.masonry{column-count:3}}
+  @media(max-width:760px){.masonry{column-count:2;column-gap:14px}}
+  @media(max-width:440px){.masonry{column-count:1}}
+  .gitem{break-inside:avoid;margin-bottom:20px;cursor:pointer;position:relative;
+    transition:transform .2s,box-shadow .2s}
+  .gitem:hover{transform:translate(-3px,-3px)}
+  .gitem .ph{width:100%;border-radius:14px}
+  .gitem.tall .ph{height:320px}
+  .gitem:not(.tall) .ph{height:210px}
+  .gitem .cap{position:absolute;left:10px;right:10px;bottom:10px;
+    font-family:'Caveat';font-weight:700;font-size:17px;color:var(--ink);
+    background:var(--card);border:2.5px solid var(--ink);border-radius:10px;
+    padding:6px 12px;box-shadow:3px 3px 0 var(--shadow);
+    opacity:0;transform:translateY(8px);transition:.22s}
+  .gitem:hover .cap{opacity:1;transform:none}
+  .gitem .zoom{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;
+    background:var(--primary);border:2.5px solid var(--ink);box-shadow:3px 3px 0 var(--shadow);
+    display:flex;align-items:center;justify-content:center;font-size:15px;opacity:0;transition:.22s}
+  .gitem:hover .zoom{opacity:1}
+
+  /* lightbox */
+  .lb{position:fixed;inset:0;z-index:80;background:rgba(10,8,4,.86);backdrop-filter:blur(6px);
+    display:flex;align-items:center;justify-content:center;padding:30px;
+    opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
+  .lb.open{opacity:1;visibility:visible}
+  .lbframe{position:relative;max-width:680px;width:100%;transform:scale(.9);transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+  .lb.open .lbframe{transform:scale(1)}
+  .lbframe .ph{height:min(64vh,520px);width:100%;border-radius:16px;box-shadow:8px 8px 0 #000}
+  .lbcap{font-family:'Patrick Hand';font-size:24px;color:#fff;text-align:center;margin-top:18px}
+  .lbclose{position:absolute;top:-16px;right:-16px;width:44px;height:44px;border-radius:50%;
+    background:var(--accent);border:3px solid #fff;color:#fff;font-size:20px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;box-shadow:4px 4px 0 #000}
+  .lbnav{position:fixed;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;
+    background:var(--primary);border:3px solid var(--ink);color:var(--ink);font-size:22px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;box-shadow:4px 4px 0 #000;z-index:81}
+  .lbnav.prev{left:24px}.lbnav.next{right:24px}
+  @media(max-width:600px){.lbnav{width:42px;height:42px}.lbnav.prev{left:10px}.lbnav.next{right:10px}}
+</style>
+</head>
+<body data-page="gallery">
+  <div class="pagewrap">
+    <div class="topgap"></div>
+    <section class="section">
+      <div class="container">
+        <div class="page-head reveal">
+          <span class="eyebrow">Album Kenangan</span>
+          <h1>Gallery</h1>
+          <p>Kumpulan potret kecil yang menyimpan tawa, pelukan, dan momen-momen yang ingin kami ingat selamanya. Klik untuk melihat lebih dekat.</p>
+        </div>
+        <div class="masonry reveal" id="masonry"></div>
+        <div class="center mt-l reveal">
+          <a class="btn ghost" href="video-memories.html" data-link>Tonton Video Kenangan <span class="ar">→</span></a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="fbrand">Padzli <span class="hh">&amp;</span> Miskah</div>
+      <p>setiap foto, sepotong cerita</p>
+      <a class="fadmin" href="admin.html" data-link>· kelola konten ·</a>
+    </footer>
+  </div>
+
+  <!-- lightbox -->
+  <div class="lb" id="lb">
+    <div class="lbnav prev" id="lbPrev">‹</div>
+    <div class="lbframe">
+      <button class="lbclose" id="lbClose">✕</button>
+      <div class="ph" id="lbPh"><span class="pl">📷 Foto kenangan</span></div>
+      <div class="lbcap" id="lbCap"></div>
+    </div>
+    <div class="lbnav next" id="lbNext">›</div>
+  </div>
+
+<script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
+<script>
+  const c=window.PM.get();
+  const m=document.getElementById('masonry');
+  c.gallery.forEach((g,i)=>{
+    const el=document.createElement('div');
+    el.className='gitem nbox'+(g.tall?' tall':'');
+    el.style.boxShadow='6px 6px 0 var(--shadow)';
+    el.innerHTML=`<div class="ph"><span class="pl">📷</span></div>
+      <span class="zoom">⤢</span><span class="cap">${g.cap}</span>`;
+    el.addEventListener('click',()=>open(i));
+    m.appendChild(el);
+  });
+
+  // lightbox
+  const lb=document.getElementById('lb'),lbCap=document.getElementById('lbCap');
+  let cur=0;
+  function open(i){cur=i;lbCap.textContent=c.gallery[i].cap;lb.classList.add('open');}
+  function close(){lb.classList.remove('open');}
+  function go(d){cur=(cur+d+c.gallery.length)%c.gallery.length;lbCap.textContent=c.gallery[cur].cap;}
+  document.getElementById('lbClose').addEventListener('click',close);
+  document.getElementById('lbPrev').addEventListener('click',()=>go(-1));
+  document.getElementById('lbNext').addEventListener('click',()=>go(1));
+  lb.addEventListener('click',e=>{if(e.target===lb)close();});
+  document.addEventListener('keydown',e=>{if(!lb.classList.contains('open'))return;
+    if(e.key==='Escape')close();if(e.key==='ArrowLeft')go(-1);if(e.key==='ArrowRight')go(1);});
+
+  window.PMreveal();
+</script>
+</body>
+</html>

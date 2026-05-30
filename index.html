@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Padzli & Miskah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Patrick+Hand&display=swap" rel="stylesheet" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#FF9F1C" />
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="assets/theme.css" />
+<style>
+  /* landing is full-bleed; nav hidden, custom loader + hero */
+  .loader{position:fixed;inset:0;z-index:100;background:var(--paper);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;
+    transition:opacity 1s,visibility 1s}
+  .loader.hide{opacity:0;visibility:hidden}
+  .lheart{width:84px;height:84px;animation:beat 1.1s ease-in-out infinite}
+  .lheart svg{width:100%;height:100%;overflow:visible}
+  .lheart path{fill:var(--accent);stroke:var(--ink);stroke-width:4;stroke-linejoin:round;
+    stroke-dasharray:240;stroke-dashoffset:240;animation:draw 1.4s ease forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes beat{0%,100%{transform:scale(1) rotate(-3deg)}50%{transform:scale(1.12) rotate(3deg)}}
+  .ltext{font-family:'Caveat';font-weight:600;font-size:26px;color:var(--ink)}
+
+  .toggle-fixed{position:fixed;top:24px;left:24px;z-index:30}
+  .music-fixed{position:fixed;top:24px;right:24px;z-index:30}
+
+  .hero{position:relative;z-index:5;height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:40px;
+    opacity:0;transform:translateY(18px)}
+  .hero.in{animation:rise 1.2s .1s cubic-bezier(.2,.8,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+
+  .names{font-family:'Patrick Hand';color:var(--ink);
+    font-size:clamp(64px,13vw,188px);line-height:.9;letter-spacing:.005em}
+  .names .amp{display:inline-block;color:var(--accent);transform:rotate(-8deg);margin:0 .04em}
+
+  .quote{font-family:'Caveat';font-weight:600;font-style:italic;
+    font-size:clamp(22px,3vw,34px);color:var(--accent);margin:26px auto 0;max-width:620px;line-height:1.35}
+  .tagline{max-width:480px;margin:14px auto 0;font-size:clamp(15px,1.6vw,18px);line-height:1.7;
+    color:var(--ink);opacity:.82}
+  .since{margin-top:24px;font-family:'Caveat';font-weight:700;font-size:22px;color:var(--ink);
+    display:inline-flex;align-items:center;gap:10px}
+  .since::before,.since::after{content:"";width:26px;height:3px;background:var(--ink);border-radius:3px}
+  .hero .btn{margin-top:38px;font-size:21px;padding:16px 40px;border-radius:16px;box-shadow:7px 7px 0 var(--shadow)}
+  .hero .btn:hover{box-shadow:10px 10px 0 var(--shadow)}
+
+  .sticker{position:fixed;z-index:4;font-family:'Caveat';font-weight:700;pointer-events:none;color:var(--accent)}
+  .s1{top:18%;left:13%;font-size:30px;transform:rotate(-14deg)}
+  .s2{bottom:20%;right:12%;font-size:26px;color:var(--ink);transform:rotate(10deg)}
+  .s3{top:24%;right:16%;font-size:34px;transform:rotate(8deg)}
+  .s4{bottom:24%;left:15%;font-size:28px;color:var(--ink);transform:rotate(-8deg)}
+  @media(max-width:760px){.sticker{display:none}}
+
+  .scrollhint{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:6;
+    font-family:'Caveat';font-weight:600;font-size:18px;color:var(--ink);opacity:.7;
+    display:flex;flex-direction:column;align-items:center;gap:5px}
+  .scrollhint .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+    border:1.5px solid var(--ink);animation:fall 1.6s ease-in-out infinite}
+  @keyframes fall{0%{transform:translateY(-5px);opacity:0}40%{opacity:1}100%{transform:translateY(9px);opacity:0}}
+</style>
+</head>
+<body data-page="home" data-nav="off">
+
+  <div class="loader" id="loader">
+    <div class="lheart"><svg viewBox="0 0 84 84"><path d="M42 74 C12 52 6 30 18 16 C28 4 40 10 42 22 C44 10 56 4 66 16 C78 30 72 52 42 74 Z"/></svg></div>
+    <div class="ltext">Menyiapkan kenangan…</div>
+  </div>
+
+  <!-- standalone mode + music for the full-bleed landing -->
+  <div class="iconbtn toggle-fixed" id="modeBtn2" title="Mode terang / gelap"><span class="ic" id="modeIc2">☀️</span><span id="modeLbl">Terang</span></div>
+  <div class="iconbtn music-fixed" id="musicBtn2" title="Putar musik"><span class="eq"><i></i><i></i><i></i></span><span class="mlbl">Musik</span></div>
+
+  <main class="hero" id="hero">
+    <div class="pill tilt-l" style="margin-bottom:34px"><span class="hh">❤</span> Kisah Cinta Kami <span class="hh">❤</span></div>
+    <h1 class="names"><span id="n1">Padzli</span><span class="amp">&amp;</span><span id="n2">Miskah</span></h1>
+    <p class="quote" id="quote">"Dua orang, satu cerita — yang ingin kami tulis sampai selamanya."</p>
+    <p class="tagline">Selamat datang di rumah kecil kenangan kami. Yuk, jelajahi perjalanan kami dari awal sampai sekarang!</p>
+    <p class="since" id="since">Bersama Sejak 2022</p>
+    <a class="btn" href="our-story.html" data-link id="startBtn">Mulai Perjalanan <span class="ar">→</span></a>
+  </main>
+
+  <span class="sticker s1">love ♡</span>
+  <span class="sticker s2">✦ forever</span>
+  <span class="sticker s3">♡</span>
+  <span class="sticker s4">us ✶</span>
+
+  <div class="scrollhint"><span>gulir ke bawah</span><span class="dot"></span></div>
+
+<script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
+<script>
+  // populate from content store
+  (function(){
+    const c=window.PM.get();
+    document.getElementById('n1').textContent=c.couple.name1;
+    document.getElementById('n2').textContent=c.couple.name2;
+    document.getElementById('quote').textContent='"'+c.couple.tagline+'"';
+    document.getElementById('since').textContent='Bersama Sejak '+new Date(c.couple.since).getFullYear();
+  })();
+
+  // landing-specific standalone mode + music buttons (mirror shared state)
+  const root=document.documentElement;
+  const mIc=document.getElementById('modeIc2'),mLbl=document.getElementById('modeLbl');
+  function syncMode(){const m=root.getAttribute('data-mode');mIc.textContent=m==='dark'?'🌙':'☀️';mLbl.textContent=m==='dark'?'Gelap':'Terang';}
+  syncMode();
+  document.getElementById('modeBtn2').addEventListener('click',()=>{
+    const m=root.getAttribute('data-mode')==='dark'?'light':'dark';
+    root.setAttribute('data-mode',m);localStorage.setItem('pm-mode',m);syncMode();
+  });
+  const mBtn=document.getElementById('musicBtn2');
+  mBtn.addEventListener('click',()=>{
+    const au=document.getElementById('bgm');
+    if(mBtn.classList.contains('playing')){mBtn.classList.remove('playing');au.pause();localStorage.setItem('pm-music','0');}
+    else{mBtn.classList.add('playing');if(!au.src)au.src=au.dataset.src;au.play().catch(()=>{});localStorage.setItem('pm-music','1');}
+  });
+  if(localStorage.getItem('pm-music')==='1')mBtn.classList.add('playing');
+
+  // loader → hero
+  window.addEventListener('load',()=>{setTimeout(()=>{
+    document.getElementById('loader').classList.add('hide');
+    document.getElementById('hero').classList.add('in');
+  },1900);});
+</script>
+</body>
+</html>

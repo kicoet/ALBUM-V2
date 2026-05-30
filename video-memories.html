@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Video Memories · Padzli & Miskah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Patrick+Hand&display=swap" rel="stylesheet" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#FF9F1C" />
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="assets/theme.css" />
+<style>
+  .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:28px;max-width:1100px;margin:0 auto}
+  .vcard{overflow:hidden;cursor:pointer;transition:transform .25s,box-shadow .25s}
+  .vcard:hover{transform:translate(-4px,-4px);box-shadow:11px 11px 0 var(--shadow)}
+  .vthumb{position:relative;height:210px;border-bottom:3px solid var(--ink);
+    background:
+      repeating-linear-gradient(45deg,var(--primary-soft) 0 14px,transparent 14px 28px),
+      var(--card);
+    display:flex;align-items:center;justify-content:center}
+  .vthumb .play{width:70px;height:70px;border-radius:50%;background:var(--accent);
+    border:3.5px solid var(--ink);box-shadow:4px 4px 0 var(--shadow);
+    display:flex;align-items:center;justify-content:center;transition:transform .25s}
+  .vcard:hover .play{transform:scale(1.1)}
+  .vthumb .play::after{content:"";border-left:22px solid #fff;border-top:14px solid transparent;
+    border-bottom:14px solid transparent;margin-left:6px}
+  .vthumb .dur{position:absolute;bottom:12px;right:12px;font-family:'Patrick Hand';font-size:13px;
+    background:var(--ink);color:var(--paper);border-radius:6px;padding:3px 9px}
+  .vbody{padding:20px 22px 24px}
+  .vbody .yr{display:inline-block;font-family:'Patrick Hand';font-size:13px;background:var(--primary);
+    border:2.5px solid var(--ink);border-radius:100px;padding:3px 12px;box-shadow:3px 3px 0 var(--shadow);margin-bottom:10px}
+  .vbody h3{font-size:25px;color:var(--ink)}
+  .vbody p{margin-top:8px;font-size:14px;line-height:1.6;color:var(--muted)}
+
+  /* player overlay */
+  .player{position:fixed;inset:0;z-index:80;background:rgba(6,5,3,.92);backdrop-filter:blur(8px);
+    display:flex;align-items:center;justify-content:center;padding:30px;
+    opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s}
+  .player.open{opacity:1;visibility:visible}
+  .pframe{position:relative;max-width:920px;width:100%;transform:scale(.92);transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+  .player.open .pframe{transform:none}
+  .screen{position:relative;aspect-ratio:16/9;width:100%;border:3px solid #fff;border-radius:16px;
+    background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:10px 10px 0 rgba(0,0,0,.6)}
+  .screen .placeholder{text-align:center;color:#fff;font-family:'Caveat';font-weight:600;font-size:22px;opacity:.85;padding:24px}
+  .screen .placeholder .big{font-size:46px;margin-bottom:10px}
+  .pmeta{color:#fff;text-align:center;margin-top:18px}
+  .pmeta h3{font-family:'Patrick Hand';font-size:28px}
+  .pmeta p{font-family:'Caveat';font-weight:600;font-size:18px;opacity:.8;margin-top:4px}
+  .pclose{position:absolute;top:-16px;right:-16px;width:46px;height:46px;border-radius:50%;
+    background:var(--accent);border:3px solid #fff;color:#fff;font-size:21px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;box-shadow:4px 4px 0 #000;z-index:2}
+</style>
+</head>
+<body data-page="videos">
+  <div class="pagewrap">
+    <div class="topgap"></div>
+    <section class="section">
+      <div class="container">
+        <div class="page-head reveal">
+          <span class="eyebrow">Kenangan Bergerak</span>
+          <h1>Video Memories</h1>
+          <p>Karena ada momen yang terlalu indah untuk hanya disimpan dalam foto. Ketuk untuk memutar.</p>
+        </div>
+        <div class="vgrid" id="vgrid"></div>
+        <div class="center mt-l reveal">
+          <a class="btn ghost" href="index.html" data-link>Kembali ke Awal <span class="ar">→</span></a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="fbrand">Padzli <span class="hh">&amp;</span> Miskah</div>
+      <p>diputar ulang, dikenang selalu</p>
+      <a class="fadmin" href="admin.html" data-link>· kelola konten ·</a>
+    </footer>
+  </div>
+
+  <!-- player -->
+  <div class="player" id="player">
+    <div class="pframe">
+      <button class="pclose" id="pClose">✕</button>
+      <div class="screen">
+        <div class="placeholder"><div class="big">🎬</div>Video akan tampil di sini setelah file diunggah lewat menu Admin.</div>
+      </div>
+      <div class="pmeta"><h3 id="pTtl"></h3><p id="pDesc"></p></div>
+    </div>
+  </div>
+
+<script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
+<script>
+  const c=window.PM.get();
+  const grid=document.getElementById('vgrid');
+  c.videos.forEach((v,i)=>{
+    const el=document.createElement('div');
+    el.className='vcard nbox reveal '+(i%2?'tilt-r':'tilt-l');
+    el.style.transitionDelay=(i*0.06)+'s';
+    el.innerHTML=`<div class="vthumb"><div class="play"></div><span class="dur">▶ HD</span></div>
+      <div class="vbody"><span class="yr">${v.date}</span><h3>${v.title}</h3><p>${v.desc}</p></div>`;
+    el.addEventListener('click',()=>openV(i));
+    grid.appendChild(el);
+  });
+
+  const player=document.getElementById('player');
+  function openV(i){document.getElementById('pTtl').textContent=c.videos[i].title;
+    document.getElementById('pDesc').textContent=c.videos[i].desc;player.classList.add('open');}
+  function close(){player.classList.remove('open');}
+  document.getElementById('pClose').addEventListener('click',close);
+  player.addEventListener('click',e=>{if(e.target===player)close();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+
+  window.PMreveal();
+</script>
+</body>
+</html>

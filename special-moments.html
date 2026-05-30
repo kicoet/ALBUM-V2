@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Special Moments · Padzli & Miskah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Patrick+Hand&display=swap" rel="stylesheet" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#FF9F1C" />
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="assets/theme.css" />
+<style>
+  .moments{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px;max-width:1080px;margin:0 auto}
+  .moment{position:relative;padding:30px 26px 28px;overflow:hidden;
+    transition:transform .25s,box-shadow .25s}
+  .moment::after{content:"";position:absolute;inset:-40% -40% auto auto;width:70%;height:120%;
+    background:radial-gradient(circle, var(--primary) 0%, transparent 70%);opacity:.0;transition:opacity .4s;pointer-events:none}
+  .moment:hover{transform:translate(-4px,-4px);box-shadow:11px 11px 0 var(--shadow)}
+  .moment:hover::after{opacity:.4}
+  .moment .ic{width:64px;height:64px;border-radius:16px;background:var(--primary);
+    border:3px solid var(--ink);box-shadow:4px 4px 0 var(--shadow);
+    display:flex;align-items:center;justify-content:center;font-size:30px;
+    animation:float 4s ease-in-out infinite}
+  .moment:nth-child(even) .ic{animation-delay:-2s}
+  @keyframes float{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+  .moment .date{display:inline-block;margin-top:20px;font-family:'Patrick Hand';font-size:14px;
+    background:var(--card);border:2.5px solid var(--ink);border-radius:100px;padding:4px 14px;box-shadow:3px 3px 0 var(--shadow)}
+  .moment h3{margin-top:14px;font-size:28px;color:var(--ink)}
+  .moment p{margin-top:10px;font-size:15px;line-height:1.65;color:var(--muted)}
+  .moment .num{position:absolute;top:18px;right:22px;font-family:'Patrick Hand';font-size:40px;
+    color:var(--primary);-webkit-text-stroke:2px var(--ink);opacity:.9}
+  [data-mode="dark"] .moment .num{-webkit-text-stroke:2px var(--ink)}
+
+  .floatbits span{position:fixed;font-family:'Caveat';font-weight:700;pointer-events:none;z-index:3;color:var(--accent);opacity:.5}
+</style>
+</head>
+<body data-page="special-moments">
+  <div class="pagewrap">
+    <div class="topgap"></div>
+    <section class="section">
+      <div class="container">
+        <div class="page-head reveal">
+          <span class="eyebrow">Momen yang Berarti</span>
+          <h1>Special Moments</h1>
+          <p>Beberapa hari yang tidak akan pernah kami lupakan — titik-titik kecil yang membentuk cerita besar kami.</p>
+        </div>
+        <div class="moments" id="moments"></div>
+        <div class="center mt-l reveal">
+          <a class="btn ghost" href="love-notes.html" data-link>Baca Surat Cinta <span class="ar">→</span></a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="fbrand">Padzli <span class="hh">&amp;</span> Miskah</div>
+      <p>momen kecil, kenangan besar</p>
+      <a class="fadmin" href="admin.html" data-link>· kelola konten ·</a>
+    </footer>
+  </div>
+
+  <div class="floatbits" id="floatbits"></div>
+
+<script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
+<script>
+  const c=window.PM.get();
+  const wrap=document.getElementById('moments');
+  c.moments.forEach((m,i)=>{
+    const el=document.createElement('div');
+    el.className='moment nbox reveal '+(i%2?'tilt-r':'tilt-l');
+    el.style.transitionDelay=(i*0.06)+'s';
+    el.innerHTML=`<span class="num">${String(i+1).padStart(2,'0')}</span>
+      <div class="ic">${m.emoji}</div>
+      <span class="date">${window.PM.fmtDate(m.date)}</span>
+      <h3>${m.title}</h3>
+      <p>${m.desc}</p>`;
+    wrap.appendChild(el);
+  });
+
+  // floating decorative bits
+  const bits=['❤','✦','♡','✶','★'];const fb=document.getElementById('floatbits');
+  for(let i=0;i<8;i++){
+    const s=document.createElement('span');
+    s.textContent=bits[i%bits.length];
+    s.style.left=(8+Math.random()*84)+'%';
+    s.style.top=(12+Math.random()*76)+'%';
+    s.style.fontSize=(18+Math.random()*20)+'px';
+    s.style.transform='rotate('+(Math.random()*40-20)+'deg)';
+    s.style.animation=`floaty ${4+Math.random()*3}s ease-in-out ${Math.random()*2}s infinite`;
+    fb.appendChild(s);
+  }
+  const st=document.createElement('style');
+  st.textContent='@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}';
+  document.head.appendChild(st);
+
+  window.PMreveal();
+</script>
+</body>
+</html>

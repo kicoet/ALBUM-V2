@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Love Notes · Padzli & Miskah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Patrick+Hand&display=swap" rel="stylesheet" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#FF9F1C" />
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="assets/theme.css" />
+<style>
+  .notes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:26px;max-width:980px;margin:0 auto}
+  /* envelope */
+  .env{cursor:pointer;position:relative;height:210px;display:flex;align-items:center;justify-content:center;
+    background:var(--primary);border:3px solid var(--ink);border-radius:14px;box-shadow:6px 6px 0 var(--shadow);
+    overflow:hidden;transition:transform .2s,box-shadow .2s}
+  .env:hover{transform:translate(-3px,-3px);box-shadow:9px 9px 0 var(--shadow)}
+  .env::before{content:"";position:absolute;top:0;left:0;right:0;height:60%;
+    background:color-mix(in srgb,var(--primary) 70%, #000 8%);
+    clip-path:polygon(0 0,100% 0,50% 85%);border-bottom:3px solid var(--ink)}
+  .env .seal{position:relative;z-index:2;width:54px;height:54px;border-radius:50%;background:var(--accent);
+    border:3px solid var(--ink);box-shadow:3px 3px 0 var(--shadow);display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:22px;margin-top:50px}
+  .env .etitle{position:absolute;bottom:14px;left:0;right:0;text-align:center;z-index:2;
+    font-family:'Patrick Hand';font-size:18px;color:var(--ink)}
+  .env .from{position:absolute;top:12px;left:14px;z-index:3;font-family:'Caveat';font-weight:700;font-size:16px;color:var(--ink)}
+  .env .tap{position:absolute;bottom:-2px;right:10px;z-index:2;font-family:'Caveat';font-weight:600;font-size:14px;color:var(--ink);opacity:.6}
+
+  /* reader overlay */
+  .reader{position:fixed;inset:0;z-index:80;background:rgba(10,8,4,.82);backdrop-filter:blur(6px);
+    display:flex;align-items:center;justify-content:center;padding:26px;
+    opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
+  .reader.open{opacity:1;visibility:visible}
+  .paper{position:relative;max-width:620px;width:100%;background:var(--card);
+    border:3px solid var(--ink);border-radius:16px;box-shadow:10px 10px 0 #000;
+    padding:42px 40px 46px;transform:scale(.82) rotate(-2deg);transition:transform .45s cubic-bezier(.2,.8,.2,1);
+    max-height:84vh;overflow:auto}
+  .reader.open .paper{transform:none}
+  .paper .pttl{font-family:'Patrick Hand';font-size:30px;color:var(--ink);padding-right:40px}
+  .paper .pbody{font-family:'Caveat';font-weight:600;font-size:24px;line-height:1.5;color:var(--ink);
+    margin-top:18px;min-height:160px;white-space:pre-wrap}
+  .paper .cursor{display:inline-block;width:3px;height:24px;background:var(--accent);vertical-align:-4px;
+    animation:blink .8s step-end infinite;margin-left:2px}
+  @keyframes blink{50%{opacity:0}}
+  .paper .pfrom{font-family:'Patrick Hand';font-size:20px;color:var(--accent);margin-top:24px;text-align:right}
+  .paper .pclose{position:absolute;top:-16px;right:-16px;width:44px;height:44px;border-radius:50%;
+    background:var(--accent);border:3px solid #fff;color:#fff;font-size:20px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;box-shadow:4px 4px 0 #000}
+  .paper .hearts{position:absolute;top:14px;left:18px;font-size:18px;color:var(--accent)}
+</style>
+</head>
+<body data-page="love-notes">
+  <div class="pagewrap">
+    <div class="topgap"></div>
+    <section class="section">
+      <div class="container">
+        <div class="page-head reveal">
+          <span class="eyebrow">Surat &amp; Pesan</span>
+          <h1>Love Notes</h1>
+          <p>Kata-kata yang kadang sulit diucapkan langsung, kami tuliskan di sini. Ketuk tiap amplop untuk membukanya.</p>
+        </div>
+        <div class="notes reveal" id="notes"></div>
+        <div class="center mt-l reveal">
+          <a class="btn ghost" href="special-moments.html" data-link>Lihat Momen Spesial <span class="ar">→</span></a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="fbrand">Padzli <span class="hh">&amp;</span> Miskah</div>
+      <p>ditulis tangan, dari hati</p>
+      <a class="fadmin" href="admin.html" data-link>· kelola konten ·</a>
+    </footer>
+  </div>
+
+  <!-- reader -->
+  <div class="reader" id="reader">
+    <div class="paper">
+      <button class="pclose" id="rClose">✕</button>
+      <div class="hearts">❤ ❤ ❤</div>
+      <div class="pttl" id="rTtl"></div>
+      <div class="pbody" id="rBody"></div>
+      <div class="pfrom" id="rFrom"></div>
+    </div>
+  </div>
+
+<script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
+<script>
+  const c=window.PM.get();
+  const wrap=document.getElementById('notes');
+  c.notes.forEach((n,i)=>{
+    const el=document.createElement('div');
+    el.className='env '+(i%2?'tilt-r':'tilt-l');
+    el.innerHTML=`<span class="from">Dari ${n.from}</span>
+      <span class="seal">❤</span>
+      <span class="etitle">${n.title}</span>
+      <span class="tap">ketuk untuk buka ✦</span>`;
+    el.addEventListener('click',()=>openNote(i));
+    wrap.appendChild(el);
+  });
+
+  const reader=document.getElementById('reader');
+  const rTtl=document.getElementById('rTtl'),rBody=document.getElementById('rBody'),rFrom=document.getElementById('rFrom');
+  let typer=null;
+  function openNote(i){
+    const n=c.notes[i];
+    rTtl.textContent=n.title; rFrom.textContent='— '+n.from; rBody.innerHTML='';
+    reader.classList.add('open');
+    clearInterval(typer);
+    const text=n.body; let k=0;
+    const cursor='<span class="cursor"></span>';
+    rBody.innerHTML=cursor;
+    setTimeout(()=>{
+      typer=setInterval(()=>{
+        k++;
+        rBody.innerHTML=text.slice(0,k).replace(/\n/g,'<br>')+cursor;
+        if(k>=text.length){clearInterval(typer);}
+      },22);
+    },450);
+  }
+  function close(){reader.classList.remove('open');clearInterval(typer);}
+  document.getElementById('rClose').addEventListener('click',close);
+  reader.addEventListener('click',e=>{if(e.target===reader)close();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+
+  window.PMreveal();
+</script>
+</body>
+</html>

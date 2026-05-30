@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin · Padzli & Miskah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Comic+Neue:ital,wght@0,400;0,700;1,400&family=Patrick+Hand&display=swap" rel="stylesheet" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#FF9F1C" />
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="assets/theme.css" />
+<style>
+  .ahead{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
+    padding:14px clamp(16px,4vw,32px);background:color-mix(in srgb,var(--paper) 78%,transparent);
+    backdrop-filter:blur(12px);border-bottom:3px solid var(--ink)}
+  .ahead .b{font-family:'Patrick Hand';font-size:21px;color:var(--ink);display:flex;align-items:center;gap:9px}
+  .ahead .b .tag{font-family:'Comic Neue';font-weight:700;font-size:11px;background:var(--accent);color:#fff;
+    border:2px solid var(--ink);border-radius:100px;padding:2px 9px}
+  .ahead .acts{display:flex;gap:10px}
+
+  /* login */
+  .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:30px;position:relative;z-index:5}
+  .loginbox{max-width:400px;width:100%;padding:38px 34px;text-align:center}
+  .loginbox .lock{width:72px;height:72px;border-radius:50%;background:var(--primary);border:3px solid var(--ink);
+    box-shadow:5px 5px 0 var(--shadow);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 18px}
+  .loginbox h1{font-size:34px;color:var(--ink)}
+  .loginbox p{color:var(--muted);margin-top:8px;font-size:14px;line-height:1.5}
+  .loginbox input{width:100%;margin-top:22px;font-family:'Comic Neue';font-weight:700;font-size:16px;
+    text-align:center;padding:14px;border:3px solid var(--ink);border-radius:12px;background:var(--card);color:var(--ink);
+    box-shadow:inset 3px 3px 0 rgba(0,0,0,.06)}
+  .loginbox input:focus{outline:none;border-color:var(--accent)}
+  .loginbox .err{color:var(--accent);font-family:'Caveat';font-weight:700;font-size:18px;margin-top:12px;min-height:24px}
+
+  /* panel */
+  .panel{position:relative;z-index:5;max-width:880px;margin:0 auto;padding:96px 20px 80px}
+  .tabbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px;position:sticky;top:74px;z-index:6;
+    background:color-mix(in srgb,var(--paper) 80%,transparent);backdrop-filter:blur(8px);padding:8px;
+    border:3px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--shadow)}
+  .tab{font-family:'Patrick Hand';font-size:15px;cursor:pointer;padding:7px 14px;border-radius:9px;
+    border:2.5px solid transparent;color:var(--ink)}
+  .tab.active{background:var(--primary);border-color:var(--ink);box-shadow:3px 3px 0 var(--shadow)}
+  .tabpane{display:none}.tabpane.active{display:block}
+
+  .field{margin-bottom:16px}
+  .field label{display:block;font-family:'Patrick Hand';font-size:16px;color:var(--ink);margin-bottom:6px}
+  .field input,.field textarea{width:100%;font-family:'Comic Neue';font-weight:400;font-size:15px;
+    padding:11px 13px;border:2.5px solid var(--ink);border-radius:10px;background:var(--card);color:var(--ink)}
+  .field input:focus,.field textarea:focus{outline:none;border-color:var(--accent)}
+  .field textarea{min-height:96px;resize:vertical;line-height:1.5}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.row2{grid-template-columns:1fr}}
+
+  .item{padding:20px;margin-bottom:18px;position:relative}
+  .item .rm{position:absolute;top:-12px;right:-12px;width:34px;height:34px;border-radius:50%;
+    background:var(--accent);color:#fff;border:2.5px solid var(--ink);cursor:pointer;font-size:16px;
+    display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 0 var(--shadow)}
+  .item .idx{font-family:'Caveat';font-weight:700;font-size:18px;color:var(--accent);margin-bottom:10px}
+  .addbtn{cursor:pointer;width:100%;padding:14px;font-family:'Patrick Hand';font-size:16px;color:var(--ink);
+    background:var(--card);border:3px dashed var(--ink);border-radius:12px;text-align:center}
+  .addbtn:hover{background:var(--primary)}
+
+  .savebar{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;align-items:center;justify-content:space-between;
+    gap:12px;padding:14px clamp(16px,4vw,32px);background:var(--card);border-top:3px solid var(--ink);flex-wrap:wrap}
+  .savebar .note{font-family:'Caveat';font-weight:600;font-size:17px;color:var(--muted)}
+  .savebar .saved{color:#2e8b57}
+  .secthead{font-family:'Patrick Hand';font-size:24px;color:var(--ink);margin:4px 0 16px;display:flex;align-items:center;gap:10px}
+  .hint{font-family:'Caveat';font-weight:600;font-size:16px;color:var(--muted);margin-bottom:18px;
+    background:var(--card);border:2.5px dashed var(--ink);border-radius:12px;padding:12px 16px}
+</style>
+</head>
+<body data-page="admin" data-nav="off">
+
+  <!-- header -->
+  <div class="ahead" id="ahead" style="display:none">
+    <div class="b">⚙️ Panel Admin <span class="tag">PRIVAT</span></div>
+    <div class="acts">
+      <div class="iconbtn" id="modeBtn2"><span class="ic" id="modeIc2">☀️</span></div>
+      <a class="iconbtn" href="index.html" data-link><span class="ic">🏠</span> Situs</a>
+      <div class="iconbtn" id="logoutBtn"><span class="ic">🚪</span> Keluar</div>
+    </div>
+  </div>
+
+  <!-- login -->
+  <div class="login" id="login">
+    <div class="loginbox nbox tilt-l">
+      <div class="lock">🔒</div>
+      <h1>Khusus Berdua</h1>
+      <p>Halaman privat untuk mengelola konten album. Masuk dengan username &amp; password.</p>
+      <input type="text" id="user" placeholder="username" autocomplete="username" />
+      <input type="password" id="pass" placeholder="password" autocomplete="current-password" style="margin-top:12px" />
+      <div class="err" id="err"></div>
+      <button class="btn" id="loginBtn" style="margin-top:18px;width:100%;justify-content:center">Masuk ❤</button>
+    </div>
+  </div>
+
+  <!-- panel -->
+  <div class="panel" id="panel" style="display:none">
+    <div class="tabbar" id="tabbar"></div>
+    <div id="panes"></div>
+  </div>
+
+  <div class="savebar" id="savebar" style="display:none">
+    <span class="note" id="saveNote">Tekan <b>Simpan</b> untuk push perubahan ke cloud.</span>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn ghost" id="resetBtn" style="font-size:15px;padding:10px 18px">↺ Reset Default</button>
+      <button class="btn" id="saveBtn" style="font-size:17px;padding:11px 26px">💾 Simpan Perubahan</button>
+    </div>
+  </div>
+
+<script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
+<script>
+  const root=document.documentElement;
+  let data=window.PM.get();
+
+  /* mode toggle */
+  const mIc=document.getElementById('modeIc2');
+  function syncMode(){mIc.textContent=root.getAttribute('data-mode')==='dark'?'🌙':'☀️';}
+  syncMode();
+  document.getElementById('modeBtn2').addEventListener('click',()=>{
+    const m=root.getAttribute('data-mode')==='dark'?'light':'dark';root.setAttribute('data-mode',m);localStorage.setItem('pm-mode',m);syncMode();
+  });
+
+  /* ---- login ---- */
+  const loginEl=document.getElementById('login'),panel=document.getElementById('panel');
+  function showApp(){
+    loginEl.style.display='none';panel.style.display='block';
+    document.getElementById('savebar').style.display='flex';
+    document.getElementById('ahead').style.display='flex';
+    buildTabs();
+  }
+  if(sessionStorage.getItem('pm-admin')==='1') showApp();
+  function tryLogin(){
+    const u=document.getElementById('user').value.trim();
+    const p=document.getElementById('pass').value;
+    const okUser = (data.settings.adminUser || 'Admin');
+    const okPass = (data.settings.adminPass || 'Ganteng');
+    if(u===okUser && p===okPass){sessionStorage.setItem('pm-admin','1');showApp();}
+    else{document.getElementById('err').textContent='Username / password salah 🙈';}
+  }
+  document.getElementById('loginBtn').addEventListener('click',tryLogin);
+  document.getElementById('user').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
+  document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
+  document.getElementById('logoutBtn').addEventListener('click',()=>{sessionStorage.removeItem('pm-admin');location.reload();});
+
+  /* ---- builders ---- */
+  function field(label,val,oninput,type='text'){
+    const f=document.createElement('div');f.className='field';
+    const tag=type==='area'?'textarea':'input';
+    f.innerHTML=`<label>${label}</label>`;
+    const inp=document.createElement(tag);
+    if(type!=='area')inp.type=type; inp.value=val??'';
+    inp.addEventListener('input',()=>oninput(inp.value));
+    f.appendChild(inp);return f;
+  }
+  function listEditor(pane,title,hint,arr,fields,blank){
+    const h=document.createElement('div');h.className='secthead';h.textContent=title;pane.appendChild(h);
+    if(hint){const hh=document.createElement('div');hh.className='hint';hh.textContent=hint;pane.appendChild(hh);}
+    const host=document.createElement('div');pane.appendChild(host);
+    function render(){
+      host.innerHTML='';
+      arr.forEach((item,i)=>{
+        const card=document.createElement('div');card.className='item nbox';
+        const idx=document.createElement('div');idx.className='idx';idx.textContent='#'+(i+1);card.appendChild(idx);
+        const rm=document.createElement('button');rm.className='rm';rm.textContent='✕';
+        rm.addEventListener('click',()=>{arr.splice(i,1);render();});card.appendChild(rm);
+        fields.forEach(fd=>{
+          card.appendChild(field(fd.label,item[fd.key],v=>item[fd.key]=fd.num?(+v):v,fd.type||'text'));
+        });
+        host.appendChild(card);
+      });
+      const add=document.createElement('div');add.className='addbtn';add.textContent='＋ Tambah '+title;
+      add.addEventListener('click',()=>{arr.push(structuredClone(blank));render();});
+      host.appendChild(add);
+    }
+    render();
+  }
+
+  const TABS=[
+    {k:'couple',t:'Pasangan'},
+    {k:'counter',t:'Counter'},
+    {k:'timeline',t:'Timeline'},
+    {k:'gallery',t:'Galeri'},
+    {k:'notes',t:'Surat'},
+    {k:'moments',t:'Momen'},
+    {k:'videos',t:'Video'},
+    {k:'settings',t:'Sandi'}
+  ];
+  function buildTabs(){
+    const tabbar=document.getElementById('tabbar'),panes=document.getElementById('panes');
+    tabbar.innerHTML='';panes.innerHTML='';
+    TABS.forEach((tb,i)=>{
+      const t=document.createElement('div');t.className='tab'+(i===0?' active':'');t.textContent=tb.t;
+      t.addEventListener('click',()=>{
+        document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+        document.querySelectorAll('.tabpane').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active');document.getElementById('pane-'+tb.k).classList.add('active');
+      });
+      tabbar.appendChild(t);
+      const pane=document.createElement('div');pane.className='tabpane'+(i===0?' active':'');pane.id='pane-'+tb.k;
+      panes.appendChild(pane);buildPane(tb.k,pane);
+    });
+  }
+
+  function buildPane(k,pane){
+    if(k==='couple'){
+      pane.innerHTML='<div class="secthead">Identitas Pasangan</div>';
+      pane.appendChild(field('Nama 1',data.couple.name1,v=>data.couple.name1=v));
+      pane.appendChild(field('Nama 2',data.couple.name2,v=>data.couple.name2=v));
+      pane.appendChild(field('Tanggal Jadian (untuk hitungan utama)',data.couple.since,v=>data.couple.since=v,'date'));
+      pane.appendChild(field('Kutipan / Tagline (di halaman depan)',data.couple.tagline,v=>data.couple.tagline=v,'area'));
+    }
+    else if(k==='counter')
+      listEditor(pane,'Milestone Counter','Kartu “sekian hari sejak …” di halaman Our Story.',data.counter,
+        [{label:'Label',key:'label'},{label:'Tanggal',key:'date',type:'date'}],{label:'Momen Baru',date:'2022-01-01'});
+    else if(k==='timeline')
+      listEditor(pane,'Garis Waktu','Tiap entri jadi satu kartu di timeline Our Story.',data.timeline,
+        [{label:'Tanggal',key:'date',type:'date'},{label:'Judul',key:'title'},{label:'Cerita',key:'story',type:'area'}],
+        {date:'2022-01-01',title:'Judul Momen',story:'Ceritanya di sini…'});
+    else if(k==='gallery')
+      listEditor(pane,'Galeri','Caption foto. (File foto asli ditaruh nanti — sekarang masih placeholder.)',data.gallery,
+        [{label:'Caption',key:'cap'}],{cap:'Kenangan baru',tall:false});
+    else if(k==='notes')
+      listEditor(pane,'Surat & Pesan','Surat cinta yang muncul dengan efek ketik.',data.notes,
+        [{label:'Judul',key:'title'},{label:'Dari',key:'from'},{label:'Isi Surat',key:'body',type:'area'}],
+        {title:'Surat Baru',from:'Padzli',body:'Tulis isi suratnya di sini…'});
+    else if(k==='moments')
+      listEditor(pane,'Momen Spesial','Emoji + judul + tanggal + deskripsi singkat.',data.moments,
+        [{label:'Emoji',key:'emoji'},{label:'Judul',key:'title'},{label:'Tanggal',key:'date',type:'date'},{label:'Deskripsi',key:'desc',type:'area'}],
+        {emoji:'✨',title:'Momen Baru',date:'2022-01-01',desc:'Deskripsi singkat…'});
+    else if(k==='videos')
+      listEditor(pane,'Video','Judul + tahun + deskripsi. (File video diunggah nanti.)',data.videos,
+        [{label:'Judul',key:'title'},{label:'Tahun',key:'date'},{label:'Deskripsi',key:'desc',type:'area'}],
+        {title:'Video Baru',date:'2024',desc:'Deskripsi singkat…'});
+    else if(k==='settings'){
+      pane.innerHTML='<div class="secthead">Kredensial Admin</div><div class="hint">Ubah username &amp; password untuk masuk ke panel ini. Sinkron antar perangkat lewat cloud.</div>';
+      pane.appendChild(field('Username',data.settings.adminUser||'Admin',v=>data.settings.adminUser=v));
+      pane.appendChild(field('Password',data.settings.adminPass||'Ganteng',v=>data.settings.adminPass=v));
+    }
+  }
+
+  /* ---- save / reset ---- */
+  function flash(msg,ok){const n=document.getElementById('saveNote');n.innerHTML=msg;n.classList.toggle('saved',!!ok);
+    setTimeout(()=>{n.innerHTML='Tekan <b>Simpan</b> untuk push perubahan ke cloud.';n.classList.remove('saved');},2600);}
+  document.getElementById('saveBtn').addEventListener('click',()=>{window.PM.save(data);flash('✓ Tersimpan & ter-sync ke semua perangkat.',true);});
+  document.getElementById('resetBtn').addEventListener('click',()=>{
+    if(confirm('Kembalikan semua konten ke contoh awal? Perubahanmu akan hilang.')){
+      window.PM.reset();data=window.PM.get();buildTabs();flash('↺ Dikembalikan ke default.',false);
+    }
+  });
+</script>
+</body>
+</html>
