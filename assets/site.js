@@ -222,13 +222,21 @@
 
     injectPlayer();
     wireMode(); wirePlayer(); wireTransitions(); initFX(fx);
-    /* Fade pagewrap in once fonts are loaded — keeps layout stable
-       (no FOUT reflow during the animation). Pages have already
-       called their own render() at script load. */
-    PMready.then(() => {
+    /* Fade pagewrap in. Primary path: wait for fonts via PMready.
+       SAFETY NET: also force .in after 1.5s no matter what, so the
+       page is never stuck invisible if PMready never resolves. */
+    const showPagewrap = (source) => {
       const w = document.querySelector('.pagewrap');
-      if (w) w.classList.add('in');
+      if (w && !w.classList.contains('in')) {
+        w.classList.add('in');
+        console.log('[PM] pagewrap .in added via', source);
+      }
+    };
+    PMready.then(() => showPagewrap('PMready')).catch(e => {
+      console.error('[PM] PMready rejected:', e);
+      showPagewrap('PMready-catch');
     });
+    setTimeout(() => showPagewrap('safety-1500ms'), 1500);
   }
 
   /* ---------------- mode ---------------- */
@@ -724,15 +732,20 @@
         // History
         history.pushState({path:href}, '', href);
 
-        // Reset scroll + fade .pagewrap in (page's inline script
-        // already called render() in its own IIFE).
+        // Reset scroll + fade .pagewrap in. Safety: also force .in
+        // after 1500ms in case PMready hangs.
         window.scrollTo(0,0);
+        const showSPA = (source) => {
+          const w=document.querySelector('.pagewrap');
+          if(w && !w.classList.contains('in')) {
+            w.classList.add('in');
+            console.log('[SPA] pagewrap .in via', source);
+          }
+        };
         (window.PMready || Promise.resolve()).then(() => {
-          requestAnimationFrame(()=>{
-            const w=document.querySelector('.pagewrap');
-            if(w) w.classList.add('in');
-          });
-        });
+          requestAnimationFrame(() => showSPA('PMready'));
+        }).catch(e => { console.error('[SPA] PMready rejected', e); showSPA('catch'); });
+        setTimeout(() => showSPA('safety-1500ms'), 1500);
       } catch(e){
         console.warn('[SPA] fallback to full nav:', e);
         window.location.href = href; return;
