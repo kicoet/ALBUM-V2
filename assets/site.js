@@ -693,8 +693,27 @@
         const newNavMode  = doc.body.dataset.nav  || '';
         // Inline scripts in body of new page (each page's per-page render code)
         const newScripts  = Array.from(doc.querySelectorAll('body > script:not([src])'));
+        // Page-specific CSS lives in <head><style> on each page (e.g.
+        // .env on love-notes, .masonry on gallery). SPA must swap these
+        // or items render with wrong styles inherited from previous page.
+        const newHeadStyles = Array.from(doc.querySelectorAll('head style'));
 
         if(!newPagewrap){ throw new Error('no .pagewrap in '+href); }
+
+        // Swap page-specific <style> tags in <head>.
+        // Remove previous page's spa-style tags (marked with data-spa-style).
+        document.querySelectorAll('head style[data-spa-style]').forEach(s => s.remove());
+        // On first SPA nav, also tag the original page's <style> tags so they
+        // can be cleaned up on next navigation.
+        document.querySelectorAll('head style:not([data-spa-style])').forEach(s => {
+          s.dataset.spaStyle = '1';
+          s.remove();
+        });
+        newHeadStyles.forEach(s => {
+          const clone = s.cloneNode(true);
+          clone.dataset.spaStyle = '1';
+          document.head.appendChild(clone);
+        });
 
         // Replace pagewrap in current DOM
         const currentPagewrap = document.querySelector('.pagewrap');
