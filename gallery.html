@@ -142,8 +142,8 @@
     });
     if(window.PMreveal) window.PMreveal();
   }
+  render();
   window.PMrender = render;
-  // site.js calls render() once PMready (DOM + fonts + cloud) resolves
   document.getElementById('lbClose').addEventListener('click',close);
   document.getElementById('lbPrev').addEventListener('click',()=>go(-1));
   document.getElementById('lbNext').addEventListener('click',()=>go(1));

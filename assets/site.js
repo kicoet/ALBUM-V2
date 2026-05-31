@@ -16,46 +16,22 @@
      of the "first load layout broken, refresh fixes it" bug.
      Safety timeout: 3.5s max so we never block forever on font CDN.
      =========================================================== */
-  const _PM_T0 = performance.now();
+  /* PMready — waits for DOM + fonts only.
+     We do NOT gate on cloud sync — pages render immediately with cached
+     data and auto-re-render silently when cloud updates arrive (see
+     'pm-cloud-ready' listener below). */
   const PMready = (async () => {
-    // (a) DOM
     if (document.readyState === 'loading') {
       await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
     }
-    console.log('[PM] DOM ready @', (performance.now()-_PM_T0).toFixed(0)+'ms');
-
-    // (b) Fonts and (c) Cloud first pull — in parallel
-    const fontsP = (document.fonts && document.fonts.ready)
-      ? Promise.race([
-          document.fonts.ready.then(()=>console.log('[PM] Fonts ready @',
-            (performance.now()-_PM_T0).toFixed(0)+'ms — loaded faces:', document.fonts.size)),
-          new Promise(r => setTimeout(()=>{console.warn('[PM] Fonts timeout');r();}, 3500))
-        ])
-      : Promise.resolve();
-
-    const cloudP = new Promise(resolve => {
-      const safety = setTimeout(()=>{ console.warn('[PM] Cloud timeout'); resolve(); }, 2500);
-      const tryAwait = () => {
-        if (window.CLOUD && window.CLOUD.ready) {
-          clearTimeout(safety);
-          Promise.race([
-            window.CLOUD.ready,
-            new Promise(r => setTimeout(r, 2500))
-          ]).then(()=>{
-            console.log('[PM] Cloud ready @', (performance.now()-_PM_T0).toFixed(0)+'ms');
-            resolve();
-          }, ()=>resolve());
-          return true;
-        }
-        return false;
-      };
-      if (!tryAwait()) {
-        window.addEventListener('cloud-init', tryAwait, { once: true });
-      }
-    });
-
-    await Promise.all([fontsP, cloudP]);
-    console.log('[PM] All ready @', (performance.now()-_PM_T0).toFixed(0)+'ms');
+    if (document.fonts && document.fonts.ready) {
+      try {
+        await Promise.race([
+          document.fonts.ready,
+          new Promise(r => setTimeout(r, 3500))
+        ]);
+      } catch {}
+    }
   })();
   window.PMready = PMready;
 
@@ -125,15 +101,21 @@
   };
   window.PM = PM;
 
-  /* Background cloud sync (silent — no in-page re-render):
-     - cloud.js still updates localStorage in the background when fresh
-       data arrives from RTDB, so the NEXT page navigation picks up the
-       latest content via PM.get().
-     - We intentionally do NOT auto-rebuild the current page DOM. That
-       caused brief flicker / animation re-trigger and felt buggy.
-     - If you want admin edits to appear instantly on a viewer device,
-       just navigate (any link click) to refresh that page. */
-  // window.addEventListener('pm-cloud-ready', ...) — intentionally removed.
+  /* Realtime cloud sync — auto re-render when RTDB data changes.
+     - Pages render() immediately at script load using cached data.
+     - When cloud sends fresh data, pm-cloud-ready event fires.
+     - Each page's window.PMrender rebuilds DOM with new data.
+     - Music player playlist also auto-refreshes via PMplayerRefresh.
+     - Admin is SKIPPED so user's mid-edit form values are preserved. */
+  window.addEventListener('pm-cloud-ready', () => {
+    if (document.body.dataset.page === 'admin') return;
+    if (typeof window.PMrender === 'function') {
+      try { window.PMrender(); } catch (e) { console.warn('[PM] render failed', e); }
+    }
+    if (typeof window.PMplayerRefresh === 'function') {
+      try { window.PMplayerRefresh(); } catch (e) { console.warn('[PM] player refresh failed', e); }
+    }
+  });
 
   /* ---------------- in-app dialog + toast ---------------- */
   function ensureToastHost(){
@@ -240,21 +222,12 @@
 
     injectPlayer();
     wireMode(); wirePlayer(); wireTransitions(); initFX(fx);
-    /* Once fonts + cloud are ready: call page-specific render first
-       (it reads PM.get() which now has cloud data), then fade in. This
-       order prevents first-paint with stale data. */
+    /* Fade pagewrap in once fonts are loaded — keeps layout stable
+       (no FOUT reflow during the animation). Pages have already
+       called their own render() at script load. */
     PMready.then(() => {
-      if (typeof window.PMrender === 'function') {
-        try {
-          window.PMrender();
-          console.log('[PM] PMrender called @', (performance.now()-_PM_T0).toFixed(0)+'ms');
-        } catch (e) { console.warn('[PM] PMrender threw', e); }
-      }
       const w = document.querySelector('.pagewrap');
-      if (w) {
-        w.classList.add('in');
-        console.log('[PM] pagewrap .in applied @', (performance.now()-_PM_T0).toFixed(0)+'ms');
-      }
+      if (w) w.classList.add('in');
     });
   }
 
@@ -751,15 +724,10 @@
         // History
         history.pushState({path:href}, '', href);
 
-        // Reset scroll, then on SPA nav: call new page's render first,
-        // THEN fade .pagewrap in. Fonts already loaded (cached from
-        // initial page), and PMrender uses current PM.get() which has
-        // up-to-date cloud data from prior session.
+        // Reset scroll + fade .pagewrap in (page's inline script
+        // already called render() in its own IIFE).
         window.scrollTo(0,0);
         (window.PMready || Promise.resolve()).then(() => {
-          if (typeof window.PMrender === 'function') {
-            try { window.PMrender(); } catch(e){ console.warn('[SPA] PMrender threw', e); }
-          }
           requestAnimationFrame(()=>{
             const w=document.querySelector('.pagewrap');
             if(w) w.classList.add('in');

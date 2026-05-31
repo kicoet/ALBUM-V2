@@ -195,8 +195,8 @@
     const y = c.couple.since ? new Date(c.couple.since).getFullYear() : '';
     document.getElementById('since').textContent='Bersama Sejak '+y;
   }
+  render();
   window.PMrender = render;
-  // site.js calls render() once PMready (DOM + fonts + cloud) resolves
 
   // landing-specific standalone mode + music buttons (mirror shared state)
   const root=document.documentElement;
