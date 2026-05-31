@@ -181,7 +181,13 @@
     }
 
     const cur=document.createElement('div'); cur.className='curtain'; cur.id='curtain';
-    cur.innerHTML='<div class="cmsg">❤</div>'; document.body.appendChild(cur);
+    cur.innerHTML=`
+      <div class="cmsg">
+        <div class="cwave"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="ctxt" id="curtainText">Mohon tunggu<span class="cdots"></span></div>
+        <div class="csub" id="curtainSub">membuka kenangan…</div>
+      </div>`;
+    document.body.appendChild(cur);
 
     const au=document.createElement('audio'); au.id='bgm';
     document.body.appendChild(au);
@@ -595,19 +601,135 @@
     };
   }
 
-  /* ---------------- page transitions ---------------- */
+  /* ---------------- page transitions (SPA pattern)
+     Music + audio element + YT iframe live in <body>, OUTSIDE .pagewrap.
+     We swap only .pagewrap content via fetch → audio never reloads,
+     YouTube keeps playing through the whole navigation. */
   function wireTransitions(){
     const cur=document.getElementById('curtain');
+    const phrases=[
+      ['Mohon tunggu', 'membuka kenangan…'],
+      ['Sebentar ya', 'memuat momen indah…'],
+      ['Menyiapkan', 'cerita untuk kamu…'],
+      ['Hampir sampai', 'bersabar sedikit ❤'],
+      ['Memuat',       'hal-hal berharga…']
+    ];
+    let phraseI=0;
+
+    function setCurtainText(){
+      const [t,s]=phrases[phraseI++ % phrases.length];
+      const tEl=document.getElementById('curtainText');
+      const sEl=document.getElementById('curtainSub');
+      if(tEl) tEl.innerHTML = t + '<span class="cdots"></span>';
+      if(sEl) sEl.textContent = s;
+    }
+
+    function isLanding(href){
+      const p=(href||'').replace(/[?#].*$/,'').replace(/^\.?\//,'').split('/').pop();
+      return p==='' || p==='index.html';
+    }
+
+    async function spaNavigate(href){
+      setCurtainText();
+      cur.classList.add('show');
+      try{
+        // run fetch + curtain animation in parallel
+        const [res] = await Promise.all([
+          fetch(href, { credentials:'same-origin' }),
+          new Promise(r=>setTimeout(r, 480))
+        ]);
+        if(!res.ok) throw new Error('fetch '+res.status);
+        const html = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const newPagewrap = doc.querySelector('.pagewrap');
+        const newTitle    = doc.querySelector('title') && doc.querySelector('title').textContent;
+        const newPage     = doc.body.dataset.page || '';
+        const newNavMode  = doc.body.dataset.nav  || '';
+        // Inline scripts in body of new page (each page's per-page render code)
+        const newScripts  = Array.from(doc.querySelectorAll('body > script:not([src])'));
+
+        if(!newPagewrap){ throw new Error('no .pagewrap in '+href); }
+
+        // Replace pagewrap in current DOM
+        const currentPagewrap = document.querySelector('.pagewrap');
+        if(currentPagewrap){
+          currentPagewrap.replaceWith(newPagewrap);
+        } else {
+          document.body.insertBefore(newPagewrap, document.body.firstChild);
+        }
+
+        // Update title + data-page
+        if(newTitle) document.title = newTitle;
+        document.body.dataset.page = newPage;
+
+        // Navbar visibility based on new page's data-nav
+        const navEl = document.querySelector('nav.nav');
+        const msheet = document.getElementById('msheet');
+        if(navEl) navEl.style.display = (newNavMode==='off') ? 'none' : '';
+        if(msheet) msheet.style.display = (newNavMode==='off') ? 'none' : '';
+
+        // Update active nav link
+        document.querySelectorAll('.nav .links a[data-link], .msheet a[data-link]').forEach(a=>{
+          const h=a.getAttribute('href');
+          a.classList.toggle('active', h===href);
+        });
+
+        // Clear previous page's render hook so stale callbacks don't fire
+        window.PMrender = null;
+
+        // Run new page's inline scripts in IIFE scope so const/let collisions are avoided
+        newScripts.forEach(s=>{
+          const code = '(function(){\n'+s.textContent+'\n})();';
+          try { (0,eval)(code); } catch(e){ console.warn('[SPA] inline script error', e); }
+        });
+
+        // History
+        history.pushState({path:href}, '', href);
+
+        // Reset scroll + animate pagewrap in
+        window.scrollTo(0,0);
+        requestAnimationFrame(()=>{
+          const w=document.querySelector('.pagewrap');
+          if(w) w.classList.add('in');
+        });
+      } catch(e){
+        console.warn('[SPA] fallback to full nav:', e);
+        window.location.href = href; return;
+      } finally {
+        // Always close the curtain
+        setTimeout(()=>cur.classList.remove('show'), 80);
+      }
+    }
+
     document.addEventListener('click',e=>{
       const a=e.target.closest('a[data-link]');
       if(!a) return;
       const href=a.getAttribute('href');
-      if(!href||href.startsWith('#')||a.target==='_blank') return;
+      if(!href || href.startsWith('#') || a.target==='_blank') return;
       e.preventDefault();
-      cur.classList.add('show');
-      setTimeout(()=>{window.location.href=href;},560);
+      // Use full reload only when entering/leaving the landing page
+      // (it has data-nav="off" + full-bleed loader that doesn't SPA-swap cleanly)
+      if(isLanding(href) || document.body.dataset.page==='home'){
+        setCurtainText();
+        cur.classList.add('show');
+        setTimeout(()=>{window.location.href=href;},560);
+        return;
+      }
+      spaNavigate(href);
     });
+
     window.addEventListener('pageshow',e=>{if(e.persisted)cur.classList.remove('show');});
+
+    window.addEventListener('popstate',()=>{
+      const here = location.pathname.split('/').pop() || 'index.html';
+      if(isLanding(here) || document.body.dataset.page==='home'){
+        window.location.href = here;
+      } else {
+        spaNavigate(here);
+      }
+    });
   }
 
   /* ---------------- scroll reveal ---------------- */
