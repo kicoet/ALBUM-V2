@@ -179,8 +179,14 @@
       tl.appendChild(node);
     });
 
-    document.querySelectorAll('.num').forEach(n=>numIO.observe(n));
-    if(window.PMreveal) window.PMreveal();
+    // Counter IntersectionObserver and reveal MUST wait for fonts —
+    // otherwise observer fires when .num is in WRONG position
+    // (fallback font metrics), animation plays while element is
+    // actually offscreen, user sees no counter animation.
+    (window.PMready || Promise.resolve()).then(() => {
+      document.querySelectorAll('.num').forEach(n=>numIO.observe(n));
+      if(window.PMreveal) window.PMreveal();
+    });
   }
   render();
   window.PMrender = render;

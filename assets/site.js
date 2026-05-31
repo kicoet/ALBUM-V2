@@ -6,6 +6,39 @@
 (function(){
   const root = document.documentElement;
 
+  /* ===========================================================
+     PMready — global readiness gate
+     Resolves only after BOTH:
+       (a) DOM parsed (DOMContentLoaded)
+       (b) Google Fonts fully loaded (document.fonts.ready)
+     This prevents layout-reading code from running while text is
+     still using fallback fonts with different metrics — the cause
+     of the "first load layout broken, refresh fixes it" bug.
+     Safety timeout: 3.5s max so we never block forever on font CDN.
+     =========================================================== */
+  const _PM_T0 = performance.now();
+  const PMready = (async () => {
+    if (document.readyState === 'loading') {
+      await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
+    }
+    console.log('[PM] DOM ready @', (performance.now()-_PM_T0).toFixed(0)+'ms');
+    if (document.fonts && document.fonts.ready) {
+      try {
+        await Promise.race([
+          document.fonts.ready,
+          new Promise(r => setTimeout(r, 3500))
+        ]);
+        console.log('[PM] Fonts ready @', (performance.now()-_PM_T0).toFixed(0)+'ms',
+          '— loaded faces:', document.fonts ? document.fonts.size : '?');
+      } catch (e) {
+        console.warn('[PM] document.fonts.ready threw', e);
+      }
+    } else {
+      console.log('[PM] No document.fonts API — proceeding without font gate');
+    }
+  })();
+  window.PMready = PMready;
+
   /* ---------------- content store ---------------- */
   const DEFAULTS = {
     couple:{ name1:'Padzli', name2:'Miskah',
@@ -187,7 +220,16 @@
 
     injectPlayer();
     wireMode(); wirePlayer(); wireTransitions(); initFX(fx);
-    requestAnimationFrame(()=>{const w=document.querySelector('.pagewrap'); if(w) w.classList.add('in');});
+    /* Fade pagewrap in only after fonts are loaded — prevents the
+       fade-in animation from running with wrong layout (fallback font
+       metrics) and re-flowing visibly when fonts swap in. */
+    PMready.then(() => {
+      const w = document.querySelector('.pagewrap');
+      if (w) {
+        w.classList.add('in');
+        console.log('[PM] pagewrap .in applied @', (performance.now()-_PM_T0).toFixed(0)+'ms');
+      }
+    });
   }
 
   /* ---------------- mode ---------------- */
@@ -683,11 +725,13 @@
         // History
         history.pushState({path:href}, '', href);
 
-        // Reset scroll + animate pagewrap in
+        // Reset scroll + animate pagewrap in (wait for fonts so layout is stable)
         window.scrollTo(0,0);
-        requestAnimationFrame(()=>{
-          const w=document.querySelector('.pagewrap');
-          if(w) w.classList.add('in');
+        (window.PMready || Promise.resolve()).then(() => {
+          requestAnimationFrame(()=>{
+            const w=document.querySelector('.pagewrap');
+            if(w) w.classList.add('in');
+          });
         });
       } catch(e){
         console.warn('[SPA] fallback to full nav:', e);
@@ -728,19 +772,28 @@
   }
 
   /* ---------------- scroll reveal ---------------- */
+  /* IMPORTANT: All getBoundingClientRect() calls + IntersectionObserver
+     setup MUST happen after PMready resolves. Reading layout before
+     fonts are loaded returns wrong rects (fallback font metrics differ
+     from Patrick Hand / Caveat / Comic Neue), which caused the
+     "first load broken, refresh fixes it" bug. */
   function initReveal(){
-    const els=[...document.querySelectorAll('.reveal')];
-    const io=new IntersectionObserver((ents)=>{
-      ents.forEach(en=>{if(en.isIntersecting){en.target.classList.add('seen');io.unobserve(en.target);}});
-    },{threshold:.12,rootMargin:'0px 0px -8% 0px'});
-    els.forEach(el=>{
-      const r=el.getBoundingClientRect();
-      if(r.top < (innerHeight*0.95)) el.classList.add('seen');
-      else io.observe(el);
+    PMready.then(() => {
+      const els=[...document.querySelectorAll('.reveal:not(.seen)')];
+      console.log('[PM] reveal: observing', els.length, 'elements @',
+        (performance.now()-_PM_T0).toFixed(0)+'ms');
+      const io=new IntersectionObserver((ents)=>{
+        ents.forEach(en=>{if(en.isIntersecting){en.target.classList.add('seen');io.unobserve(en.target);}});
+      },{threshold:.12,rootMargin:'0px 0px -8% 0px'});
+      els.forEach(el=>{
+        const r=el.getBoundingClientRect();
+        if(r.top < (innerHeight*0.95)) el.classList.add('seen');
+        else io.observe(el);
+      });
+      setTimeout(()=>document.querySelectorAll('.reveal:not(.seen)').forEach(el=>{
+        if(el.getBoundingClientRect().top < innerHeight) el.classList.add('seen');
+      }),1400);
     });
-    setTimeout(()=>document.querySelectorAll('.reveal:not(.seen)').forEach(el=>{
-      if(el.getBoundingClientRect().top < innerHeight) el.classList.add('seen');
-    }),1400);
   }
   window.PMreveal = initReveal;
 
