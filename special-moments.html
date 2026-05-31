@@ -95,8 +95,8 @@
     });
     if(window.PMreveal) window.PMreveal();
   }
-  render();
   window.PMrender = render;
+  // site.js calls render() once PMready (DOM + fonts + cloud) resolves
 
   // floating decorative bits
   const bits=['❤','✦','♡','✶','★'];const fb=document.getElementById('floatbits');

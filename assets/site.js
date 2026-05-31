@@ -18,24 +18,44 @@
      =========================================================== */
   const _PM_T0 = performance.now();
   const PMready = (async () => {
+    // (a) DOM
     if (document.readyState === 'loading') {
       await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
     }
     console.log('[PM] DOM ready @', (performance.now()-_PM_T0).toFixed(0)+'ms');
-    if (document.fonts && document.fonts.ready) {
-      try {
-        await Promise.race([
-          document.fonts.ready,
-          new Promise(r => setTimeout(r, 3500))
-        ]);
-        console.log('[PM] Fonts ready @', (performance.now()-_PM_T0).toFixed(0)+'ms',
-          '— loaded faces:', document.fonts ? document.fonts.size : '?');
-      } catch (e) {
-        console.warn('[PM] document.fonts.ready threw', e);
+
+    // (b) Fonts and (c) Cloud first pull — in parallel
+    const fontsP = (document.fonts && document.fonts.ready)
+      ? Promise.race([
+          document.fonts.ready.then(()=>console.log('[PM] Fonts ready @',
+            (performance.now()-_PM_T0).toFixed(0)+'ms — loaded faces:', document.fonts.size)),
+          new Promise(r => setTimeout(()=>{console.warn('[PM] Fonts timeout');r();}, 3500))
+        ])
+      : Promise.resolve();
+
+    const cloudP = new Promise(resolve => {
+      const safety = setTimeout(()=>{ console.warn('[PM] Cloud timeout'); resolve(); }, 2500);
+      const tryAwait = () => {
+        if (window.CLOUD && window.CLOUD.ready) {
+          clearTimeout(safety);
+          Promise.race([
+            window.CLOUD.ready,
+            new Promise(r => setTimeout(r, 2500))
+          ]).then(()=>{
+            console.log('[PM] Cloud ready @', (performance.now()-_PM_T0).toFixed(0)+'ms');
+            resolve();
+          }, ()=>resolve());
+          return true;
+        }
+        return false;
+      };
+      if (!tryAwait()) {
+        window.addEventListener('cloud-init', tryAwait, { once: true });
       }
-    } else {
-      console.log('[PM] No document.fonts API — proceeding without font gate');
-    }
+    });
+
+    await Promise.all([fontsP, cloudP]);
+    console.log('[PM] All ready @', (performance.now()-_PM_T0).toFixed(0)+'ms');
   })();
   window.PMready = PMready;
 
@@ -220,10 +240,16 @@
 
     injectPlayer();
     wireMode(); wirePlayer(); wireTransitions(); initFX(fx);
-    /* Fade pagewrap in only after fonts are loaded — prevents the
-       fade-in animation from running with wrong layout (fallback font
-       metrics) and re-flowing visibly when fonts swap in. */
+    /* Once fonts + cloud are ready: call page-specific render first
+       (it reads PM.get() which now has cloud data), then fade in. This
+       order prevents first-paint with stale data. */
     PMready.then(() => {
+      if (typeof window.PMrender === 'function') {
+        try {
+          window.PMrender();
+          console.log('[PM] PMrender called @', (performance.now()-_PM_T0).toFixed(0)+'ms');
+        } catch (e) { console.warn('[PM] PMrender threw', e); }
+      }
       const w = document.querySelector('.pagewrap');
       if (w) {
         w.classList.add('in');
@@ -725,9 +751,15 @@
         // History
         history.pushState({path:href}, '', href);
 
-        // Reset scroll + animate pagewrap in (wait for fonts so layout is stable)
+        // Reset scroll, then on SPA nav: call new page's render first,
+        // THEN fade .pagewrap in. Fonts already loaded (cached from
+        // initial page), and PMrender uses current PM.get() which has
+        // up-to-date cloud data from prior session.
         window.scrollTo(0,0);
         (window.PMready || Promise.resolve()).then(() => {
+          if (typeof window.PMrender === 'function') {
+            try { window.PMrender(); } catch(e){ console.warn('[SPA] PMrender threw', e); }
+          }
           requestAnimationFrame(()=>{
             const w=document.querySelector('.pagewrap');
             if(w) w.classList.add('in');
