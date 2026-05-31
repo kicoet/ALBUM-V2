@@ -793,8 +793,6 @@
   function initReveal(){
     PMready.then(() => {
       const els=[...document.querySelectorAll('.reveal:not(.seen)')];
-      console.log('[PM] reveal: observing', els.length, 'elements @',
-        (performance.now()-_PM_T0).toFixed(0)+'ms');
       const io=new IntersectionObserver((ents)=>{
         ents.forEach(en=>{if(en.isIntersecting){en.target.classList.add('seen');io.unobserve(en.target);}});
       },{threshold:.12,rootMargin:'0px 0px -8% 0px'});
