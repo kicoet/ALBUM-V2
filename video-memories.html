@@ -91,28 +91,14 @@
 
 <script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
 <script>
-  const c=window.PM.get();
-  const grid=document.getElementById('vgrid');
-  c.videos.forEach((v,i)=>{
-    const el=document.createElement('div');
-    el.className='vcard nbox reveal '+(i%2?'tilt-r':'tilt-l');
-    el.style.transitionDelay=(i*0.06)+'s';
-    const thumbBg = v.cover
-      ? `background-image:url('${v.cover}');background-size:cover;background-position:center`
-      : '';
-    el.innerHTML=`<div class="vthumb" style="${thumbBg}"><div class="play"></div><span class="dur">${v.video?'▶ HD':'belum'}</span></div>
-      <div class="vbody"><span class="yr">${v.date}</span><h3>${v.title}</h3><p>${v.desc}</p></div>`;
-    el.addEventListener('click',()=>openV(i));
-    grid.appendChild(el);
-  });
-
+  // player state — persists across re-renders
   const player=document.getElementById('player');
   const screen=player.querySelector('.screen');
-  let currentVideoEl=null;
+  let videosData=[]; let currentVideoEl=null;
   function openV(i){
-    const v = c.videos[i];
-    document.getElementById('pTtl').textContent=v.title;
-    document.getElementById('pDesc').textContent=v.desc;
+    const v = videosData[i]; if(!v) return;
+    document.getElementById('pTtl').textContent=v.title||'';
+    document.getElementById('pDesc').textContent=v.desc||'';
     if(v.video){
       screen.innerHTML = `<video src="${v.video}" controls autoplay style="width:100%;height:100%;background:#000"></video>`;
       currentVideoEl = screen.querySelector('video');
@@ -130,7 +116,26 @@
   player.addEventListener('click',e=>{if(e.target===player)closeP();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeP();});
 
-  window.PMreveal();
+  function render(){
+    const c=window.PM.get();
+    videosData = c.videos || [];
+    const grid=document.getElementById('vgrid'); grid.innerHTML='';
+    videosData.forEach((v,i)=>{
+      const el=document.createElement('div');
+      el.className='vcard nbox reveal '+(i%2?'tilt-r':'tilt-l');
+      el.style.transitionDelay=(i*0.06)+'s';
+      const thumbBg = v.cover
+        ? `background-image:url('${v.cover}');background-size:cover;background-position:center`
+        : '';
+      el.innerHTML=`<div class="vthumb" style="${thumbBg}"><div class="play"></div><span class="dur">${v.video?'▶ HD':'belum'}</span></div>
+        <div class="vbody"><span class="yr">${v.date}</span><h3>${v.title}</h3><p>${v.desc}</p></div>`;
+      el.addEventListener('click',()=>openV(i));
+      grid.appendChild(el);
+    });
+    if(window.PMreveal) window.PMreveal();
+  }
+  render();
+  window.PMrender = render;
 </script>
 </body>
 </html>

@@ -90,28 +90,16 @@
 
 <script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
 <script>
-  const c=window.PM.get();
-  const wrap=document.getElementById('notes');
-  c.notes.forEach((n,i)=>{
-    const el=document.createElement('div');
-    el.className='env '+(i%2?'tilt-r':'tilt-l');
-    el.innerHTML=`<span class="from">Dari ${n.from}</span>
-      <span class="seal">❤</span>
-      <span class="etitle">${n.title}</span>
-      <span class="tap">ketuk untuk buka ✦</span>`;
-    el.addEventListener('click',()=>openNote(i));
-    wrap.appendChild(el);
-  });
-
+  // reader state — persists across re-renders
   const reader=document.getElementById('reader');
   const rTtl=document.getElementById('rTtl'),rBody=document.getElementById('rBody'),rFrom=document.getElementById('rFrom');
-  let typer=null;
+  let notesData=[]; let typer=null;
   function openNote(i){
-    const n=c.notes[i];
+    const n=notesData[i]; if(!n) return;
     rTtl.textContent=n.title; rFrom.textContent='— '+n.from; rBody.innerHTML='';
     reader.classList.add('open');
     clearInterval(typer);
-    const text=n.body; let k=0;
+    const text=n.body||''; let k=0;
     const cursor='<span class="cursor"></span>';
     rBody.innerHTML=cursor;
     setTimeout(()=>{
@@ -127,7 +115,24 @@
   reader.addEventListener('click',e=>{if(e.target===reader)close();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
 
-  window.PMreveal();
+  function render(){
+    const c=window.PM.get();
+    notesData = c.notes || [];
+    const wrap=document.getElementById('notes'); wrap.innerHTML='';
+    notesData.forEach((n,i)=>{
+      const el=document.createElement('div');
+      el.className='env '+(i%2?'tilt-r':'tilt-l');
+      el.innerHTML=`<span class="from">Dari ${n.from}</span>
+        <span class="seal">❤</span>
+        <span class="etitle">${n.title}</span>
+        <span class="tap">ketuk untuk buka ✦</span>`;
+      el.addEventListener('click',()=>openNote(i));
+      wrap.appendChild(el);
+    });
+    if(window.PMreveal) window.PMreveal();
+  }
+  render();
+  window.PMrender = render;
 </script>
 </body>
 </html>

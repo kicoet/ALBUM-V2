@@ -65,22 +65,27 @@
 
 <script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
 <script>
-  const c=window.PM.get();
-  const wrap=document.getElementById('moments');
-  c.moments.forEach((m,i)=>{
-    const el=document.createElement('div');
-    el.className='moment nbox reveal '+(i%2?'tilt-r':'tilt-l');
-    el.style.transitionDelay=(i*0.06)+'s';
-    const imgBlock = m.img
-      ? `<div style="margin-top:16px;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;box-shadow:4px 4px 0 var(--shadow);height:180px"><img src="${m.img}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"/></div>`
-      : '';
-    el.innerHTML=`<span class="num">${String(i+1).padStart(2,'0')}</span>
-      <div class="ic">${m.emoji}</div>
-      <span class="date">${window.PM.fmtDate(m.date)}</span>
-      <h3>${m.title}</h3>
-      <p>${m.desc}</p>${imgBlock}`;
-    wrap.appendChild(el);
-  });
+  function render(){
+    const c=window.PM.get();
+    const wrap=document.getElementById('moments'); wrap.innerHTML='';
+    (c.moments||[]).forEach((m,i)=>{
+      const el=document.createElement('div');
+      el.className='moment nbox reveal '+(i%2?'tilt-r':'tilt-l');
+      el.style.transitionDelay=(i*0.06)+'s';
+      const imgBlock = m.img
+        ? `<div style="margin-top:16px;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;box-shadow:4px 4px 0 var(--shadow);height:180px"><img src="${m.img}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"/></div>`
+        : '';
+      el.innerHTML=`<span class="num">${String(i+1).padStart(2,'0')}</span>
+        <div class="ic">${m.emoji}</div>
+        <span class="date">${window.PM.fmtDate(m.date)}</span>
+        <h3>${m.title}</h3>
+        <p>${m.desc}</p>${imgBlock}`;
+      wrap.appendChild(el);
+    });
+    if(window.PMreveal) window.PMreveal();
+  }
+  render();
+  window.PMrender = render;
 
   // floating decorative bits
   const bits=['❤','✦','♡','✶','★'];const fb=document.getElementById('floatbits');
@@ -97,8 +102,6 @@
   const st=document.createElement('style');
   st.textContent='@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}';
   document.head.appendChild(st);
-
-  window.PMreveal();
 </script>
 </body>
 </html>

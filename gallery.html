@@ -90,43 +90,50 @@
 
 <script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
 <script>
-  const c=window.PM.get();
-  const m=document.getElementById('masonry');
-  c.gallery.forEach((g,i)=>{
-    const el=document.createElement('div');
-    el.className='gitem nbox'+(g.tall?' tall':'');
-    el.style.boxShadow='6px 6px 0 var(--shadow)';
-    const phInner = g.img
-      ? `<img src="${g.img}" alt="${(g.cap||'').replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;display:block"/>`
-      : `<span class="pl">📷</span>`;
-    el.innerHTML=`<div class="ph">${phInner}</div>
-      <span class="zoom">⤢</span><span class="cap">${g.cap||''}</span>`;
-    el.addEventListener('click',()=>openLb(i));
-    m.appendChild(el);
-  });
-
-  // lightbox — show actual image when uploaded, fallback to placeholder
+  // Lightbox refs + state — stay alive across re-renders
   const lb=document.getElementById('lb'),lbCap=document.getElementById('lbCap'),lbPh=document.getElementById('lbPh');
-  let cur=0;
+  let gallery=[]; let cur=0;
   function paintLb(i){
-    lbCap.textContent = c.gallery[i].cap || '';
-    if(c.gallery[i].img){
-      lbPh.innerHTML = `<img src="${c.gallery[i].img}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;background:#000"/>`;
+    const g=gallery[i]; if(!g) return;
+    lbCap.textContent = g.cap || '';
+    if(g.img){
+      lbPh.innerHTML = `<img src="${g.img}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;background:#000"/>`;
     } else {
       lbPh.innerHTML = `<span class="pl">📷 Foto kenangan</span>`;
     }
   }
   function openLb(i){cur=i;paintLb(cur);lb.classList.add('open');}
   function close(){lb.classList.remove('open');}
-  function go(d){cur=(cur+d+c.gallery.length)%c.gallery.length;paintLb(cur);}
+  function go(d){if(!gallery.length)return;cur=(cur+d+gallery.length)%gallery.length;paintLb(cur);}
+
+  /* re-renderable: rebuilds masonry from latest PM.get() */
+  function render(){
+    const c=window.PM.get();
+    gallery = c.gallery || [];
+    const m=document.getElementById('masonry');
+    m.innerHTML='';
+    gallery.forEach((g,i)=>{
+      const el=document.createElement('div');
+      el.className='gitem nbox'+(g.tall?' tall':'');
+      el.style.boxShadow='6px 6px 0 var(--shadow)';
+      const phInner = g.img
+        ? `<img src="${g.img}" alt="${(g.cap||'').replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;display:block"/>`
+        : `<span class="pl">📷</span>`;
+      el.innerHTML=`<div class="ph">${phInner}</div>
+        <span class="zoom">⤢</span><span class="cap">${g.cap||''}</span>`;
+      el.addEventListener('click',()=>openLb(i));
+      m.appendChild(el);
+    });
+    if(window.PMreveal) window.PMreveal();
+  }
+  render();
+  window.PMrender = render;
   document.getElementById('lbClose').addEventListener('click',close);
   document.getElementById('lbPrev').addEventListener('click',()=>go(-1));
   document.getElementById('lbNext').addEventListener('click',()=>go(1));
   lb.addEventListener('click',e=>{if(e.target===lb)close();});
   document.addEventListener('keydown',e=>{if(!lb.classList.contains('open'))return;
     if(e.key==='Escape')close();if(e.key==='ArrowLeft')go(-1);if(e.key==='ArrowRight')go(1);});
-
-  window.PMreveal();
 </script>
 </body>
 </html>

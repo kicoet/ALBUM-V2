@@ -72,9 +72,22 @@
   };
   window.PM = PM;
 
-  /* Note: cloud.js updates localStorage in background. We intentionally
-     do NOT auto-reload — it caused FOUC + reload loop on fresh visit.
-     Each page picks up new data on next navigation via PM.get(). */
+  /* Realtime cloud sync (without page reload):
+     - cloud.js fires 'pm-cloud-ready' when fresh data arrives from RTDB.
+     - Each user-facing page exposes window.PMrender() that re-builds its
+       dynamic content from the latest PM.get(). We call it here.
+     - The music player exposes PMplayerRefresh() to update its track list
+       without interrupting currently-playing audio.
+     - Admin page is SKIPPED so user's mid-edit work is never overwritten. */
+  window.addEventListener('pm-cloud-ready', () => {
+    if (document.body.dataset.page === 'admin') return;
+    if (typeof window.PMrender === 'function') {
+      try { window.PMrender(); } catch (e) { console.warn('[PM] render failed', e); }
+    }
+    if (typeof window.PMplayerRefresh === 'function') {
+      try { window.PMplayerRefresh(); } catch (e) { console.warn('[PM] player refresh failed', e); }
+    }
+  });
 
   /* ---------------- in-app dialog + toast ---------------- */
   function ensureToastHost(){
@@ -456,6 +469,39 @@
     }
 
     window.PMplayer = { toggle: playPause };
+
+    /* Realtime playlist refresh (called when cloud sends updated content).
+       - Updates track list display + state.list.
+       - Keeps current playback if the playing track still exists.
+       - Resets if playlist becomes empty or current index is out of range. */
+    window.PMplayerRefresh = function(){
+      const newList = PM.get().playlist || [];
+      const prevTrack = state.list[state.idx];
+      state.list = newList;
+      if(!newList.length){
+        tearDown();
+        state.idx = 0; state.engine = 'none';
+        titleEl.textContent = 'Tidak ada lagu';
+        artistEl.textContent = 'Tambah lagu lewat Admin';
+        setPlayBtn(false);
+        renderTracks();
+        return;
+      }
+      // Try to keep playing the same track by matching url
+      if(prevTrack && prevTrack.url){
+        const stillThere = newList.findIndex(t => t.url === prevTrack.url);
+        if(stillThere >= 0){
+          state.idx = stillThere;
+          localStorage.setItem('pm-music-i', String(stillThere));
+          renderTracks();
+          return;
+        }
+      }
+      // Track gone — clamp index, stop playback
+      state.idx = Math.min(state.idx, newList.length - 1);
+      tearDown(); setPlayBtn(false);
+      renderTracks();
+    };
   }
 
   /* ---------------- page transitions ---------------- */

@@ -93,14 +93,17 @@
 
 <script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
 <script>
-  // populate from content store
-  (function(){
+  // populate from content store — re-runs when cloud sends fresh data
+  function render(){
     const c=window.PM.get();
-    document.getElementById('n1').textContent=c.couple.name1;
-    document.getElementById('n2').textContent=c.couple.name2;
-    document.getElementById('quote').textContent='"'+c.couple.tagline+'"';
-    document.getElementById('since').textContent='Bersama Sejak '+new Date(c.couple.since).getFullYear();
-  })();
+    document.getElementById('n1').textContent=c.couple.name1||'';
+    document.getElementById('n2').textContent=c.couple.name2||'';
+    document.getElementById('quote').textContent='"'+(c.couple.tagline||'')+'"';
+    const y = c.couple.since ? new Date(c.couple.since).getFullYear() : '';
+    document.getElementById('since').textContent='Bersama Sejak '+y;
+  }
+  render();
+  window.PMrender = render;
 
   // landing-specific standalone mode + music buttons (mirror shared state)
   const root=document.documentElement;
