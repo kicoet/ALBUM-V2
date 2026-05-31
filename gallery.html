@@ -13,26 +13,42 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="stylesheet" href="assets/theme.css" />
 <style>
-  .masonry{column-count:4;column-gap:20px}
+  /* Masonry columns — photos in natural aspect, never cropped */
+  .masonry{column-count:4;column-gap:18px}
   @media(max-width:1100px){.masonry{column-count:3}}
-  @media(max-width:760px){.masonry{column-count:2;column-gap:14px}}
-  @media(max-width:440px){.masonry{column-count:1}}
-  .gitem{break-inside:avoid;margin-bottom:20px;cursor:pointer;position:relative;
-    transition:transform .2s,box-shadow .2s}
-  .gitem:hover{transform:translate(-3px,-3px)}
-  .gitem .ph{width:100%;border-radius:14px}
-  .gitem.tall .ph{height:320px}
-  .gitem:not(.tall) .ph{height:210px}
-  .gitem .cap{position:absolute;left:10px;right:10px;bottom:10px;
-    font-family:'Caveat';font-weight:700;font-size:17px;color:var(--ink);
+  @media(max-width:760px){.masonry{column-count:2;column-gap:12px}}
+  @media(max-width:380px){.masonry{column-count:2;column-gap:8px}}
+
+  .gitem{break-inside:avoid;margin-bottom:18px;cursor:pointer;position:relative;
+    transition:transform .2s,box-shadow .2s;box-shadow:5px 5px 0 var(--shadow) !important;
+    border-radius:14px;overflow:hidden;background:var(--card)}
+  .gitem:hover{transform:translate(-3px,-3px);box-shadow:8px 8px 0 var(--shadow) !important}
+
+  /* Photo container — natural aspect ratio, no crop */
+  .gitem .ph{position:relative;width:100%;border:0;border-radius:0;display:block;
+    background:repeating-linear-gradient(45deg,var(--primary-soft) 0 12px,transparent 12px 24px),var(--card);
+    border-bottom:3px solid var(--ink);min-height:120px;
+    align-items:center;justify-content:center}
+  .gitem .ph img{width:100%;height:auto;display:block}
+  .gitem .ph .pl{display:flex;margin:24px auto;
+    font-family:'Caveat',cursive;font-weight:700;font-size:18px;
     background:var(--card);border:2.5px solid var(--ink);border-radius:10px;
-    padding:6px 12px;box-shadow:3px 3px 0 var(--shadow);
-    opacity:0;transform:translateY(8px);transition:.22s}
-  .gitem:hover .cap{opacity:1;transform:none}
+    padding:7px 14px;box-shadow:3px 3px 0 var(--shadow);width:max-content}
+
+  /* Caption — always visible BELOW the image, bigger font */
+  .gitem .cap{display:block;position:static;
+    font-family:'Patrick Hand',cursive;font-size:17px;line-height:1.3;color:var(--ink);
+    background:var(--card);padding:12px 14px;
+    text-align:center;border-top:0;letter-spacing:.2px}
   .gitem .zoom{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;
     background:var(--primary);border:2.5px solid var(--ink);box-shadow:3px 3px 0 var(--shadow);
     display:flex;align-items:center;justify-content:center;font-size:15px;opacity:0;transition:.22s}
   .gitem:hover .zoom{opacity:1}
+
+  @media(max-width:560px){
+    .gitem .cap{font-size:15px;padding:10px 10px}
+    .gitem{margin-bottom:12px;border-radius:12px}
+  }
 
   /* lightbox */
   .lb{position:fixed;inset:0;z-index:80;background:rgba(10,8,4,.86);backdrop-filter:blur(6px);
@@ -75,17 +91,17 @@
       <p>setiap foto, sepotong cerita</p>
       <a class="fadmin" href="admin.html" data-link>· kelola konten ·</a>
     </footer>
-  </div>
 
-  <!-- lightbox -->
-  <div class="lb" id="lb">
-    <div class="lbnav prev" id="lbPrev">‹</div>
-    <div class="lbframe">
-      <button class="lbclose" id="lbClose">✕</button>
-      <div class="ph" id="lbPh"><span class="pl">📷 Foto kenangan</span></div>
-      <div class="lbcap" id="lbCap"></div>
+    <!-- lightbox (inside pagewrap so SPA navigation transfers it) -->
+    <div class="lb" id="lb">
+      <div class="lbnav prev" id="lbPrev">‹</div>
+      <div class="lbframe">
+        <button class="lbclose" id="lbClose">✕</button>
+        <div class="ph" id="lbPh"><span class="pl">📷 Foto kenangan</span></div>
+        <div class="lbcap" id="lbCap"></div>
+      </div>
+      <div class="lbnav next" id="lbNext">›</div>
     </div>
-    <div class="lbnav next" id="lbNext">›</div>
   </div>
 
 <script type="module" src="assets/cloud.js"></script><script src="assets/site.js"></script>
@@ -114,13 +130,13 @@
     m.innerHTML='';
     gallery.forEach((g,i)=>{
       const el=document.createElement('div');
-      el.className='gitem nbox'+(g.tall?' tall':'');
-      el.style.boxShadow='6px 6px 0 var(--shadow)';
+      el.className='gitem nbox';
+      // Natural aspect ratio — let image set its own height
       const phInner = g.img
-        ? `<img src="${g.img}" alt="${(g.cap||'').replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;display:block"/>`
-        : `<span class="pl">📷</span>`;
+        ? `<img src="${g.img}" alt="${(g.cap||'').replace(/"/g,'&quot;')}" loading="lazy"/>`
+        : `<span class="pl">📷 Foto</span>`;
       el.innerHTML=`<div class="ph">${phInner}</div>
-        <span class="zoom">⤢</span><span class="cap">${g.cap||''}</span>`;
+        <span class="zoom">⤢</span><span class="cap">${g.cap||'(tanpa caption)'}</span>`;
       el.addEventListener('click',()=>openLb(i));
       m.appendChild(el);
     });

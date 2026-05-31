@@ -639,7 +639,9 @@
           new Promise(r=>setTimeout(r, 480))
         ]);
         if(!res.ok) throw new Error('fetch '+res.status);
-        const html = await res.text();
+        // Force UTF-8 decode (avoids charset mismatch that mangles emoji)
+        const buf = await res.arrayBuffer();
+        const html = new TextDecoder('utf-8').decode(buf);
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 

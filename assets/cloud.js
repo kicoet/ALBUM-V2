@@ -55,13 +55,50 @@ async function uploadDataUrl(dataUrl, folder) {
 // ---------- Cloud pull/push ----------
 const STORAGE_KEY = 'pm-content';
 
+/* Auto-fix mojibake: when admin saved earlier, charset mismatch double-encoded
+   UTF-8 strings (so 💬 became "ðŸ'¬"). We detect those markers, re-interpret
+   the string as Latin-1 bytes, then decode as proper UTF-8. */
+let _didFixMojibake = false;
+function _fixMojibake(s) {
+  if (typeof s !== 'string') return s;
+  // Common double-encoding markers
+  if (!/Ã|ð[Ÿœž]|Â[^a-zA-Z]|â€|â„|â–|â–º/.test(s)) return s;
+  // Bail if any char is outside Latin-1 range (means string has real Unicode mixed in)
+  for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) > 255) return s;
+  try {
+    const bytes = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
+    const out = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    if (out !== s) _didFixMojibake = true;
+    return out;
+  } catch { return s; }
+}
+function _deepFixMojibake(o) {
+  if (typeof o === 'string') return _fixMojibake(o);
+  if (Array.isArray(o)) return o.map(_deepFixMojibake);
+  if (o && typeof o === 'object') {
+    const out = {};
+    for (const k in o) out[k] = _deepFixMojibake(o[k]);
+    return out;
+  }
+  return o;
+}
+
 function applyRemote(cloud) {
   if (!cloud) return false;
+  _didFixMojibake = false;
+  const fixed = _deepFixMojibake(cloud);
   const current = localStorage.getItem(STORAGE_KEY);
-  const incoming = JSON.stringify(cloud);
-  if (current === incoming) return false;
+  const incoming = JSON.stringify(fixed);
+  if (current === incoming) {
+    // even if no change, push the fix to cloud (one-time cleanup)
+    if (_didFixMojibake) pushCloud(fixed).catch(()=>{});
+    return false;
+  }
   localStorage.setItem(STORAGE_KEY, incoming);
-  window.dispatchEvent(new CustomEvent('pm-cloud-ready', { detail: cloud }));
+  window.dispatchEvent(new CustomEvent('pm-cloud-ready', { detail: fixed }));
+  // Self-heal: if we fixed mojibake, push the clean data back to cloud
+  if (_didFixMojibake) pushCloud(fixed).catch(()=>{});
   return true;
 }
 
