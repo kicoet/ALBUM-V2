@@ -470,6 +470,97 @@
 
     window.PMplayer = { toggle: playPause };
 
+    /* ---------- Autoplay orchestration ----------
+       Browsers block audio autoplay until a user gesture. Strategy:
+       1. If session was already approved (landing's "Buka Album" click)
+          OR localStorage says music should be playing, try to play now.
+       2. If the play attempt fails (no gesture yet), show a floating
+          "tap to play music" prompt + attach one-time click listener
+          to the document. First click anywhere → starts playback. */
+    function shouldAutoplay(){
+      return state.list.length > 0 && (
+        sessionStorage.getItem('pm-autoplay-ok')==='1' ||
+        localStorage.getItem('pm-music')==='1'
+      );
+    }
+    function showTapPrompt(){
+      if(document.getElementById('tap2play')) return;
+      const t=document.createElement('div'); t.id='tap2play'; t.className='tap2play';
+      t.innerHTML=`<span class="eq"><i></i><i></i><i></i></span><span>Tap untuk mulai musik</span>`;
+      document.body.appendChild(t);
+      requestAnimationFrame(()=>t.classList.add('show'));
+    }
+    function hideTapPrompt(){
+      const t=document.getElementById('tap2play'); if(!t) return;
+      t.classList.remove('show');
+      setTimeout(()=>t.remove(), 400);
+    }
+    async function tryAutoplay(){
+      if(!state.list.length) return false;
+      try{
+        await new Promise((res,rej)=>{
+          const t = state.list[state.idx];
+          const u = detectUrl(t.url);
+          if(u.type==='audio'){
+            au.src = u.url;
+            au.play().then(res).catch(rej);
+          } else if(u.type==='youtube'){
+            loadYTAPI().then(()=>{
+              if(!ytPlayer){
+                ytPlayer = new YT.Player('mYtFrame', {
+                  videoId: u.id,
+                  playerVars: { autoplay:1, controls:0, modestbranding:1, playsinline:1 },
+                  events: {
+                    onReady: (e)=>{
+                      try{ e.target.playVideo(); res(); }catch(_){ rej(_); }
+                    },
+                    onStateChange: (e)=>{
+                      const S = YT.PlayerState;
+                      if(e.data===S.PLAYING){ setPlayBtn(true); sessionStorage.setItem('pm-autoplay-ok','1'); }
+                      else if(e.data===S.PAUSED) setPlayBtn(false);
+                      else if(e.data===S.ENDED) next();
+                    }
+                  }
+                });
+              } else {
+                try{ ytPlayer.loadVideoById(u.id); res(); }catch(_){ rej(_); }
+              }
+              state.engine='youtube';
+            }).catch(rej);
+          } else { rej(new Error('unsupported')); }
+        });
+        sessionStorage.setItem('pm-autoplay-ok','1');
+        return true;
+      } catch(e){
+        return false;
+      }
+    }
+    window.PMtryAutoplay = tryAutoplay;
+
+    // Kick off autoplay attempt if conditions are right
+    if(shouldAutoplay()){
+      setTimeout(async ()=>{
+        const ok = await tryAutoplay();
+        if(!ok){
+          // Browser blocked — wait for first user click anywhere
+          showTapPrompt();
+          const enable = ()=>{
+            document.removeEventListener('click', enable, true);
+            document.removeEventListener('touchstart', enable, true);
+            hideTapPrompt();
+            tryAutoplay();
+          };
+          document.addEventListener('click', enable, true);
+          document.addEventListener('touchstart', enable, true);
+        }
+      }, 400);
+    }
+
+    /* Realtime playlist refresh (called when cloud sends updated content).
+       - Updates track list display + state.list.
+       - Keeps current playback if the playing track still exists.
+       - Resets if playlist becomes empty or current index is out of range. */
+
     /* Realtime playlist refresh (called when cloud sends updated content).
        - Updates track list display + state.list.
        - Keeps current playback if the playing track still exists.
