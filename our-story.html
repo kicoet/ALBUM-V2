@@ -25,7 +25,27 @@
   .mile{padding:14px 20px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:150px}
   .mile .d{font-family:'Patrick Hand';font-size:26px;color:var(--accent)}
   .mile .l{font-family:'Comic Neue';font-weight:700;font-size:13px;color:var(--muted)}
-  .mile .dt{font-family:'Caveat';font-weight:600;font-size:16px;color:var(--ink)}
+  .mile .dt{font-family:'Caveat';font-weight:600;font-size:16px;color:var(--ink);text-align:center}
+
+  /* Mobile: counter cards become equal-width 3-col, milestones 2-col */
+  @media(max-width:560px){
+    .counter{gap:8px;padding:0 4px}
+    .cbox{min-width:0;flex:1 1 0;padding:14px 4px}
+    .cbox .num{font-size:30px}
+    .cbox .lab{font-size:13px;margin-top:4px}
+    .totaldays{font-size:17px;margin-top:18px;padding:0 12px;line-height:1.4}
+
+    .milestones{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:28px;padding:0 4px}
+    .mile{min-width:0;width:100%;padding:12px 10px}
+    .mile .d{font-size:22px}
+    .mile .l{font-size:11px;letter-spacing:.04em}
+    .mile .dt{font-size:13px;line-height:1.25}
+  }
+  @media(max-width:380px){
+    .cbox .num{font-size:26px}
+    .cbox .lab{font-size:12px}
+    .milestones{grid-template-columns:1fr}
+  }
 
   /* timeline */
   .timeline{position:relative;max-width:980px;margin:0 auto;padding:20px 0}
@@ -51,10 +71,15 @@
 
   @media(max-width:760px){
     .timeline::before{left:26px}
-    .tnode{grid-template-columns:52px 1fr;gap:6px}
+    .tnode{grid-template-columns:52px 1fr;gap:6px;margin-bottom:30px}
     .tnode .spacer{display:none}
     .tnode:nth-child(even) .tcard,.tnode:nth-child(odd) .tcard{grid-column:2}
     .tdot{grid-column:1;justify-self:center}
+    .tcard .ph{height:150px}
+    .tcard .body{padding:14px 16px 18px}
+    .tcard h3{font-size:22px}
+    .tcard p{font-size:13.5px;margin-top:6px;line-height:1.55}
+    .tcard .yr{font-size:12.5px;padding:2px 10px;margin-bottom:8px}
   }
 
   .endcap{text-align:center;margin-top:30px}
