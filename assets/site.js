@@ -72,22 +72,15 @@
   };
   window.PM = PM;
 
-  /* Realtime cloud sync (without page reload):
-     - cloud.js fires 'pm-cloud-ready' when fresh data arrives from RTDB.
-     - Each user-facing page exposes window.PMrender() that re-builds its
-       dynamic content from the latest PM.get(). We call it here.
-     - The music player exposes PMplayerRefresh() to update its track list
-       without interrupting currently-playing audio.
-     - Admin page is SKIPPED so user's mid-edit work is never overwritten. */
-  window.addEventListener('pm-cloud-ready', () => {
-    if (document.body.dataset.page === 'admin') return;
-    if (typeof window.PMrender === 'function') {
-      try { window.PMrender(); } catch (e) { console.warn('[PM] render failed', e); }
-    }
-    if (typeof window.PMplayerRefresh === 'function') {
-      try { window.PMplayerRefresh(); } catch (e) { console.warn('[PM] player refresh failed', e); }
-    }
-  });
+  /* Background cloud sync (silent — no in-page re-render):
+     - cloud.js still updates localStorage in the background when fresh
+       data arrives from RTDB, so the NEXT page navigation picks up the
+       latest content via PM.get().
+     - We intentionally do NOT auto-rebuild the current page DOM. That
+       caused brief flicker / animation re-trigger and felt buggy.
+     - If you want admin edits to appear instantly on a viewer device,
+       just navigate (any link click) to refresh that page. */
+  // window.addEventListener('pm-cloud-ready', ...) — intentionally removed.
 
   /* ---------------- in-app dialog + toast ---------------- */
   function ensureToastHost(){
