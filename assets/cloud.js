@@ -183,12 +183,21 @@ async function pushCloud(content) {
 }
 
 // ---------- Admin auth (server-side via PocketBase) ----------
-// Credentials are verified by PocketBase against the _superusers collection
-// — NOTHING is checked in the browser and no password is shipped to clients.
-// PocketBase persists the auth token in localStorage, so the session survives
-// reloads (pb.authStore.isValid). Manage admin accounts in the PB Admin UI.
-async function adminLogin(email, password) {
-  await pb.collection('_superusers').authWithPassword(email, password);
+// Credentials are verified by PocketBase — NOTHING is checked in the browser
+// and no password is shipped to clients. PocketBase persists the auth token in
+// localStorage, so the session survives reloads (pb.authStore.isValid).
+//
+// Per-customer admin lives in this instance's `users` collection. Because every
+// customer runs an ISOLATED PocketBase (own port + own pb_data), each folder's
+// admin password is independent — there is zero linkage between customers.
+// We fall back to `_superusers` so the operator's master account can also log
+// into any customer's panel. Manage accounts in the PB Admin UI (/<slug>/pb/_/).
+async function adminLogin(identity, password) {
+  try {
+    await pb.collection('users').authWithPassword(identity, password);
+  } catch (e) {
+    await pb.collection('_superusers').authWithPassword(identity, password);
+  }
   return pb.authStore.isValid;
 }
 function adminLogout() { pb.authStore.clear(); }

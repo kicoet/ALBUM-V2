@@ -10,15 +10,19 @@ admin panel privat.
 | Field    | Value         |
 |----------|---------------|
 | URL      | `/admin.html` |
-| Email    | akun superuser PocketBase |
-| Password | password superuser PocketBase |
+| Email    | akun admin customer (collection `users`) |
+| Password | password unik per customer |
 
-Login **divalidasi server-side oleh PocketBase** (collection `_superusers`) —
-tidak ada password yang dibandingkan di browser atau dikirim ke pengunjung.
-Ganti / kelola akun admin lewat PocketBase Admin UI di
-`https://aksaradesigns.com/<slug>/pb/_/`. (Versi lama menyimpan user/pass di
-dalam blob konten publik — itu sudah dihapus; `cloud.js` otomatis membersihkan
-kredensial lama dari record cloud saat pertama kali dimuat.)
+Login **divalidasi server-side oleh PocketBase** — tidak ada password yang
+dibandingkan di browser atau dikirim ke pengunjung. Tiap customer punya akun
+admin sendiri di collection `users` instance-nya; karena tiap customer
+PocketBase-nya terisolasi (port + `pb_data` sendiri), **password tiap folder
+independen, tanpa keterkaitan**. `cloud.js` mencoba auth ke `users` dulu, lalu
+fallback ke `_superusers` (akun master operator). Kelola akun lewat PocketBase
+Admin UI di `https://aksaradesigns.com/<slug>/pb/_/` → collection `users`.
+
+(Versi lama menyimpan user/pass di dalam blob konten publik — itu sudah dihapus;
+`cloud.js` otomatis membersihkan kredensial lama dari record cloud saat dimuat.)
 
 ## Tech
 
