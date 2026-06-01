@@ -97,8 +97,8 @@
     <div class="loginbox nbox tilt-l">
       <div class="lock">🔒</div>
       <h1>Khusus Berdua</h1>
-      <p>Halaman privat untuk mengelola konten album. Masuk dengan username &amp; password.</p>
-      <input type="text" id="user" placeholder="username" autocomplete="username" />
+      <p>Halaman privat untuk mengelola konten album. Masuk dengan email &amp; password admin.</p>
+      <input type="email" id="user" placeholder="email" autocomplete="username" inputmode="email" />
       <input type="password" id="pass" placeholder="password" autocomplete="current-password" style="margin-top:12px" />
       <div class="err" id="err"></div>
       <button class="btn" id="loginBtn" style="margin-top:18px;width:100%;justify-content:center">Masuk ❤</button>
@@ -142,18 +142,34 @@
   }
   /* Auto-restore session moved to bottom of script — must run AFTER
      const TABS is initialized to avoid Temporal Dead Zone crash. */
-  function tryLogin(){
-    const u=document.getElementById('user').value.trim();
+  /* Auth is validated SERVER-SIDE by PocketBase (_superusers). No password
+     is ever compared in the browser or shipped to clients. */
+  async function tryLogin(){
+    const email=document.getElementById('user').value.trim();
     const p=document.getElementById('pass').value;
-    const okUser = (data.settings.adminUser || 'Admin');
-    const okPass = (data.settings.adminPass || 'Ganteng');
-    if(u===okUser && p===okPass){sessionStorage.setItem('pm-admin','1');showApp();}
-    else{document.getElementById('err').textContent='Username / password salah 🙈';}
+    const errEl=document.getElementById('err');
+    errEl.textContent='';
+    if(!window.CLOUD || !window.CLOUD.adminLogin){
+      errEl.textContent='Cloud belum siap, coba sebentar lagi.'; return;
+    }
+    const btn=document.getElementById('loginBtn');
+    const label=btn.textContent; btn.disabled=true; btn.textContent='Memeriksa…';
+    try{
+      await window.CLOUD.adminLogin(email,p);
+      showApp();
+    }catch(e){
+      errEl.textContent='Email / password salah 🙈';
+    }finally{
+      btn.disabled=false; btn.textContent=label;
+    }
   }
   document.getElementById('loginBtn').addEventListener('click',tryLogin);
   document.getElementById('user').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
   document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
-  document.getElementById('logoutBtn').addEventListener('click',()=>{sessionStorage.removeItem('pm-admin');location.reload();});
+  document.getElementById('logoutBtn').addEventListener('click',()=>{
+    if(window.CLOUD && window.CLOUD.adminLogout) window.CLOUD.adminLogout();
+    location.reload();
+  });
 
   /* ---- builders ---- */
   function field(label,val,oninput,type='text'){
@@ -256,8 +272,7 @@
     {k:'notes',t:'Surat'},
     {k:'moments',t:'Momen'},
     {k:'videos',t:'Video'},
-    {k:'songs',t:'Lagu'},
-    {k:'settings',t:'Sandi'}
+    {k:'songs',t:'Lagu'}
   ];
   function buildTabs(){
     const tabbar=document.getElementById('tabbar'),panes=document.getElementById('panes');
@@ -315,11 +330,6 @@
         ],
         {title:'Lagu Baru',artist:'',url:''});
     }
-    else if(k==='settings'){
-      pane.innerHTML='<div class="secthead">Kredensial Admin</div><div class="hint">Ubah username &amp; password untuk masuk ke panel ini. Sinkron antar perangkat lewat cloud.</div>';
-      pane.appendChild(field('Username',data.settings.adminUser||'Admin',v=>data.settings.adminUser=v));
-      pane.appendChild(field('Password',data.settings.adminPass||'Ganteng',v=>data.settings.adminPass=v));
-    }
   }
 
   /* ---- save / reset ---- */
@@ -344,8 +354,14 @@
 
   /* Auto-restore session — MUST be at bottom so const TABS is initialized.
      Without this, refresh-after-login crashed buildTabs with a TDZ ReferenceError
-     leaving the tabbar empty. */
-  if(sessionStorage.getItem('pm-admin')==='1') showApp();
+     leaving the tabbar empty. PocketBase persists the auth token, so a valid
+     superuser session survives reloads. cloud.js is a module (loads AFTER this
+     inline script), so wait for its 'cloud-init' event if it isn't ready yet. */
+  function restoreSession(){
+    if(window.CLOUD && window.CLOUD.isAdmin && window.CLOUD.isAdmin()) showApp();
+  }
+  if(window.CLOUD) restoreSession();
+  else window.addEventListener('cloud-init', restoreSession, {once:true});
 </script>
 </body>
 </html>

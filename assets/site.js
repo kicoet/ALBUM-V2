@@ -77,8 +77,9 @@
       {title:'Highlight Momen', date:'2022', desc:'Potongan-potongan kebahagiaan kecil sepanjang tahun.', video:'', cover:''},
       {title:'Anniversary',     date:'2023', desc:'Hadiah spesial di hari jadi kami yang ke-1.',          video:'', cover:''}
     ],
-    playlist:[],  // [{title, artist, url}] — admin upload via PocketBase
-    settings:{ adminUser:'Admin', adminPass:'Ganteng' }
+    playlist:[]   // [{title, artist, url}] — admin upload via PocketBase
+    // NOTE: admin credentials are NOT stored here. Auth is validated
+    // server-side by PocketBase (_superusers). See assets/cloud.js.
   };
 
   function deepMerge(base, over){

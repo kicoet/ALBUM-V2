@@ -98,21 +98,42 @@ function _deepFixMojibake(o) {
   return o;
 }
 
+/* Security: admin credentials must NEVER live in the public content blob.
+   Older saves stored settings.adminUser / settings.adminPass (plaintext),
+   which was shipped to every visitor. Strip them on read; if any were
+   present we self-heal by pushing the cleaned blob back to the cloud so
+   the secret stops being served. Auth is now validated server-side by
+   PocketBase (_superusers) — see adminLogin() below. */
+function _stripSecrets(o) {
+  if (!o || typeof o !== 'object' || !o.settings || typeof o.settings !== 'object') return o;
+  if (!('adminUser' in o.settings) && !('adminPass' in o.settings)) return o;
+  const settings = { ...o.settings };
+  delete settings.adminUser;
+  delete settings.adminPass;
+  const clone = { ...o };
+  if (Object.keys(settings).length) clone.settings = settings;
+  else delete clone.settings;
+  return clone;
+}
+
 function applyRemote(cloud) {
   if (!cloud) return false;
   _didFixMojibake = false;
-  const fixed = _deepFixMojibake(cloud);
+  let fixed = _deepFixMojibake(cloud);
+  const stripped = _stripSecrets(fixed);
+  const dirty = _didFixMojibake || (stripped !== fixed); // either cleanup happened
+  fixed = stripped;
   const current = localStorage.getItem(STORAGE_KEY);
   const incoming = JSON.stringify(fixed);
   if (current === incoming) {
-    // even if no change, push the fix to cloud (one-time cleanup)
-    if (_didFixMojibake) pushCloud(fixed).catch(()=>{});
+    // even if no local change, push the cleanup to cloud (one-time)
+    if (dirty) pushCloud(fixed).catch(()=>{});
     return false;
   }
   localStorage.setItem(STORAGE_KEY, incoming);
   window.dispatchEvent(new CustomEvent('pm-cloud-ready', { detail: fixed }));
-  // Self-heal: if we fixed mojibake, push the clean data back to cloud
-  if (_didFixMojibake) pushCloud(fixed).catch(()=>{});
+  // Self-heal: if we cleaned mojibake or stripped secrets, push clean data back
+  if (dirty) pushCloud(fixed).catch(()=>{});
   return true;
 }
 
@@ -161,12 +182,27 @@ async function pushCloud(content) {
   }
 }
 
+// ---------- Admin auth (server-side via PocketBase) ----------
+// Credentials are verified by PocketBase against the _superusers collection
+// — NOTHING is checked in the browser and no password is shipped to clients.
+// PocketBase persists the auth token in localStorage, so the session survives
+// reloads (pb.authStore.isValid). Manage admin accounts in the PB Admin UI.
+async function adminLogin(email, password) {
+  await pb.collection('_superusers').authWithPassword(email, password);
+  return pb.authStore.isValid;
+}
+function adminLogout() { pb.authStore.clear(); }
+function isAdmin() { return pb.authStore.isValid; }
+
 // Expose — same shape as before so the rest of the app is untouched.
 window.CLOUD = {
   pullCloud,
   pushCloud,
   upload: pbUpload,
   uploadDataUrl,
+  adminLogin,
+  adminLogout,
+  isAdmin,
   ready: pullCloud(),
   pb, // handy for debugging in the console
 };

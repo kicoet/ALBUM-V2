@@ -7,14 +7,18 @@ admin panel privat.
 
 ## Login admin
 
-| Field    | Value     |
-|----------|-----------|
+| Field    | Value         |
+|----------|---------------|
 | URL      | `/admin.html` |
-| Username | `Admin`   |
-| Password | `Ganteng` |
+| Email    | akun superuser PocketBase |
+| Password | password superuser PocketBase |
 
-Ganti kredensial via tab **Sandi** di panel admin. Perubahan langsung tersinkron
-ke cloud (semua device pakai kredensial baru setelah satu kali save).
+Login **divalidasi server-side oleh PocketBase** (collection `_superusers`) —
+tidak ada password yang dibandingkan di browser atau dikirim ke pengunjung.
+Ganti / kelola akun admin lewat PocketBase Admin UI di
+`https://aksaradesigns.com/<slug>/pb/_/`. (Versi lama menyimpan user/pass di
+dalam blob konten publik — itu sudah dihapus; `cloud.js` otomatis membersihkan
+kredensial lama dari record cloud saat pertama kali dimuat.)
 
 ## Tech
 
@@ -47,8 +51,9 @@ Buka Admin UI: `https://aksaradesigns.com/<slug>/pb/_/` lalu buat 2 collection:
 | `folder` | Text (optional) | mis. `album-v2/images` |
 
 **API Rules** untuk kedua collection: set **List/View/Create/Update** ke kosong
-(public) supaya tamu bisa baca dan admin panel bisa menyimpan. Akses tulis
-digate oleh login admin di `admin.html`, bukan oleh PocketBase.
+(public) supaya tamu bisa baca dan admin panel bisa menyimpan. Catatan: login
+admin (`admin.html`) hanya menjaga akses ke UI panel — write ke collection
+sendiri masih publik sesuai rules di atas.
 
 > Override URL: kalau perlu menunjuk PocketBase lain, set
 > `window.POCKETBASE_URL = 'https://.../pb'` sebelum `cloud.js` dimuat.
