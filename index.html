@@ -200,12 +200,16 @@
 
   // landing-specific standalone mode + music buttons (mirror shared state)
   const root=document.documentElement;
+  /* Per-customer storage namespace (matches site.js / cloud.js). */
+  const _lSegs=location.pathname.split('/').filter(Boolean);
+  const _lSlug=(_lSegs[0] && !_lSegs[0].toLowerCase().endsWith('.html'))?_lSegs[0]:'';
+  const K=(name)=>_lSlug?`${name}:${_lSlug}`:name;
   const mIc=document.getElementById('modeIc2'),mLbl=document.getElementById('modeLbl');
   function syncMode(){const m=root.getAttribute('data-mode');mIc.textContent=m==='dark'?'🌙':'☀️';mLbl.textContent=m==='dark'?'Gelap':'Terang';}
   syncMode();
   document.getElementById('modeBtn2').addEventListener('click',()=>{
     const m=root.getAttribute('data-mode')==='dark'?'light':'dark';
-    root.setAttribute('data-mode',m);localStorage.setItem('pm-mode',m);syncMode();
+    root.setAttribute('data-mode',m);localStorage.setItem(K('pm-mode'),m);syncMode();
   });
   // Landing music button: opens the floating player panel (which has full
   // playlist + controls). Wait until site.js has injected the player.
@@ -227,7 +231,7 @@
     document.getElementById('hero').classList.add('in');
     // Mark autoplay-allowed for this session so other pages can play freely
     sessionStorage.setItem('pm-autoplay-ok','1');
-    localStorage.setItem('pm-music','1');
+    localStorage.setItem(K('pm-music'),'1');
     // Trigger playback via the unified player (works for YouTube + audio)
     if(window.PMplayer && window.PMplayer.toggle){
       try { window.PMplayer.toggle(); } catch(e){}

@@ -67,7 +67,13 @@ async function uploadDataUrl(dataUrl, folder) {
 }
 
 // ---------- Cloud pull/push ----------
-const STORAGE_KEY = 'pm-content';
+// Namespace the cache key per customer. All customers share one origin
+// (localStorage is per-origin, not per-path), so an un-namespaced
+// 'pm-content' would let one customer's album bleed into another's cache.
+// MUST match site.js's K('pm-content') derivation.
+const _pmSegs = location.pathname.split('/').filter(Boolean);
+const _pmSlug = (_pmSegs[0] && !_pmSegs[0].toLowerCase().endsWith('.html')) ? _pmSegs[0] : '';
+const STORAGE_KEY = _pmSlug ? `pm-content:${_pmSlug}` : 'pm-content';
 
 /* Auto-fix mojibake: when admin saved earlier, charset mismatch double-encoded
    UTF-8 strings (so 💬 became "ðŸ'¬"). We detect those markers, re-interpret

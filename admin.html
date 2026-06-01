@@ -124,12 +124,17 @@
   const root=document.documentElement;
   let data=window.PM.get();
 
+  /* Per-customer storage namespace (matches site.js / cloud.js). */
+  const _aSegs=location.pathname.split('/').filter(Boolean);
+  const _aSlug=(_aSegs[0] && !_aSegs[0].toLowerCase().endsWith('.html'))?_aSegs[0]:'';
+  const K=(name)=>_aSlug?`${name}:${_aSlug}`:name;
+
   /* mode toggle */
   const mIc=document.getElementById('modeIc2');
   function syncMode(){mIc.textContent=root.getAttribute('data-mode')==='dark'?'🌙':'☀️';}
   syncMode();
   document.getElementById('modeBtn2').addEventListener('click',()=>{
-    const m=root.getAttribute('data-mode')==='dark'?'light':'dark';root.setAttribute('data-mode',m);localStorage.setItem('pm-mode',m);syncMode();
+    const m=root.getAttribute('data-mode')==='dark'?'light':'dark';root.setAttribute('data-mode',m);localStorage.setItem(K('pm-mode'),m);syncMode();
   });
 
   /* ---- login ---- */

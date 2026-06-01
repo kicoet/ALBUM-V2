@@ -7,6 +7,23 @@
   const root = document.documentElement;
 
   /* ===========================================================
+     Per-customer storage namespace.
+     Every customer is served from the SAME origin
+     (aksaradesigns.com/<slug>/...) and localStorage is shared per
+     ORIGIN, not per path. A single 'pm-content' key would therefore
+     bleed one customer's album into another's cache — editing or
+     deleting in one would appear to change another. We suffix every
+     key with the slug so each folder is isolated in the browser too.
+     MUST match cloud.js's STORAGE_KEY derivation.
+     =========================================================== */
+  function pmSlug(){
+    const segs = location.pathname.split('/').filter(Boolean);
+    return (segs[0] && !segs[0].toLowerCase().endsWith('.html')) ? segs[0] : '';
+  }
+  const PM_NS = pmSlug();
+  const K = (name) => PM_NS ? `${name}:${PM_NS}` : name;
+
+  /* ===========================================================
      PMready — global readiness gate
      Resolves only after BOTH:
        (a) DOM parsed (DOMContentLoaded)
@@ -89,15 +106,15 @@
   }
   const PM = {
     get(){
-      try{const raw=localStorage.getItem('pm-content');
+      try{const raw=localStorage.getItem(K('pm-content'));
         return raw?deepMerge(DEFAULTS,JSON.parse(raw)):structuredClone(DEFAULTS);}
       catch(e){return structuredClone(DEFAULTS);}
     },
     save(c){
-      localStorage.setItem('pm-content',JSON.stringify(c));
+      localStorage.setItem(K('pm-content'),JSON.stringify(c));
       if(window.CLOUD && typeof window.CLOUD.pushCloud==='function') window.CLOUD.pushCloud(c);
     },
-    reset(){localStorage.removeItem('pm-content');},
+    reset(){localStorage.removeItem(K('pm-content'));},
     DEFAULTS
   };
   window.PM = PM;
@@ -244,11 +261,11 @@
   function wireMode(){
     const ic=document.getElementById('modeIc');
     function apply(m){root.setAttribute('data-mode',m); if(ic) ic.textContent=m==='dark'?'🌙':'☀️';}
-    apply(localStorage.getItem('pm-mode')||'light');
+    apply(localStorage.getItem(K('pm-mode'))||'light');
     const btn=document.getElementById('modeBtn');
     if(btn) btn.addEventListener('click',()=>{
       const m=root.getAttribute('data-mode')==='dark'?'light':'dark';
-      localStorage.setItem('pm-mode',m); apply(m);
+      localStorage.setItem(K('pm-mode'),m); apply(m);
     });
   }
 
@@ -324,16 +341,16 @@
 
     const state = {
       list: (PM.get().playlist||[]),
-      idx: Math.min(parseInt(localStorage.getItem('pm-music-i')||'0',10)||0, Math.max(0,(PM.get().playlist||[]).length-1)),
-      shuffle: localStorage.getItem('pm-music-shuffle')==='1',
-      repeat:  localStorage.getItem('pm-music-repeat')||'all',
+      idx: Math.min(parseInt(localStorage.getItem(K('pm-music-i'))||'0',10)||0, Math.max(0,(PM.get().playlist||[]).length-1)),
+      shuffle: localStorage.getItem(K('pm-music-shuffle'))==='1',
+      repeat:  localStorage.getItem(K('pm-music-repeat'))||'all',
       playing: false,
       engine: 'none' // 'audio' | 'youtube' | 'spotify' | 'none'
     };
 
     /* Engine abstraction — routes play control to YouTube/audio per URL type */
     let ytPlayer = null;
-    function setPlayBtn(on){ playBtn.textContent = on?'⏸':'▶'; state.playing=on; if(btn) btn.classList.toggle('playing', on); localStorage.setItem('pm-music', on?'1':'0'); }
+    function setPlayBtn(on){ playBtn.textContent = on?'⏸':'▶'; state.playing=on; if(btn) btn.classList.toggle('playing', on); localStorage.setItem(K('pm-music'), on?'1':'0'); }
 
     function tearDown(){
       try{ au.pause(); }catch(e){}
@@ -357,7 +374,7 @@
       const u = detectUrl(t.url);
       titleEl.textContent = t.title || 'Tanpa judul';
       artistEl.textContent = (t.artist || '—') + ' · ' + (u.type==='youtube'?'YouTube':u.type==='spotify'?'Spotify':u.type==='audio'?'Audio':'?');
-      localStorage.setItem('pm-music-i', String(i));
+      localStorage.setItem(K('pm-music-i'), String(i));
       renderTracks();
 
       tearDown();
@@ -476,12 +493,12 @@
     nextBtn.addEventListener('click', next);
     shufBtn.addEventListener('click',()=>{
       state.shuffle=!state.shuffle;
-      localStorage.setItem('pm-music-shuffle', state.shuffle?'1':'0');
+      localStorage.setItem(K('pm-music-shuffle'), state.shuffle?'1':'0');
       shufBtn.classList.toggle('on', state.shuffle);
     });
     repBtn.addEventListener('click',()=>{
       state.repeat = state.repeat==='off'?'all':state.repeat==='all'?'one':'off';
-      localStorage.setItem('pm-music-repeat', state.repeat);
+      localStorage.setItem(K('pm-music-repeat'), state.repeat);
       repBtn.classList.toggle('on', state.repeat!=='off');
       repBtn.textContent = state.repeat==='one'?'🔂':'🔁';
     });
@@ -502,7 +519,7 @@
       curEl.textContent = fmtTime(c);
       durEl.textContent = fmtTime(d);
       pBar.style.width = (d ? (c/d*100) : 0) + '%';
-      if(state.playing && state.engine==='audio') localStorage.setItem('pm-music-t', String(c));
+      if(state.playing && state.engine==='audio') localStorage.setItem(K('pm-music-t'), String(c));
     }, 500);
 
     /* restore state */
@@ -511,7 +528,7 @@
     if(state.repeat==='one') repBtn.textContent='🔂';
     if(state.list.length){
       loadTrack(state.idx, false);
-      const wasT = parseFloat(localStorage.getItem('pm-music-t')||'0')||0;
+      const wasT = parseFloat(localStorage.getItem(K('pm-music-t'))||'0')||0;
       if(wasT) au.addEventListener('loadedmetadata', ()=>{au.currentTime=wasT;}, {once:true});
     } else {
       renderTracks();
@@ -529,7 +546,7 @@
     function shouldAutoplay(){
       return state.list.length > 0 && (
         sessionStorage.getItem('pm-autoplay-ok')==='1' ||
-        localStorage.getItem('pm-music')==='1'
+        localStorage.getItem(K('pm-music'))==='1'
       );
     }
     function showTapPrompt(){
@@ -632,7 +649,7 @@
         const stillThere = newList.findIndex(t => t.url === prevTrack.url);
         if(stillThere >= 0){
           state.idx = stillThere;
-          localStorage.setItem('pm-music-i', String(stillThere));
+          localStorage.setItem(K('pm-music-i'), String(stillThere));
           renderTracks();
           return;
         }
