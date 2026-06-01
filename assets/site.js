@@ -77,7 +77,7 @@
       {title:'Highlight Momen', date:'2022', desc:'Potongan-potongan kebahagiaan kecil sepanjang tahun.', video:'', cover:''},
       {title:'Anniversary',     date:'2023', desc:'Hadiah spesial di hari jadi kami yang ke-1.',          video:'', cover:''}
     ],
-    playlist:[],  // [{title, artist, url}] — admin upload via Cloudinary
+    playlist:[],  // [{title, artist, url}] — admin upload via PocketBase
     settings:{ adminUser:'Admin', adminPass:'Ganteng' }
   };
 
@@ -101,7 +101,7 @@
   };
   window.PM = PM;
 
-  /* Realtime cloud sync — auto re-render when RTDB data changes.
+  /* Realtime cloud sync — auto re-render when PocketBase data changes.
      - Pages render() immediately at script load using cached data.
      - When cloud sends fresh data, pm-cloud-ready event fires.
      - Each page's window.PMrender rebuilds DOM with new data.
@@ -261,7 +261,7 @@
     // Spotify track
     const sp = u.match(/open\.spotify\.com\/(?:intl-\w+\/)?track\/([\w]+)/);
     if(sp) return {type:'spotify', id:sp[1], url:u};
-    // Direct audio (mp3/m4a/wav/ogg) or Cloudinary url
+    // Direct audio (mp3/m4a/wav/ogg) or PocketBase file url
     return {type:'audio', url:u};
   }
   let _ytReadyP = null;

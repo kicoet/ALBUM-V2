@@ -1,55 +1,69 @@
 // ===========================================================
-// Album Ucapan-Ultah V2 — Firebase Realtime Database + Cloudinary
-// Switched from Firestore to RTDB per user request — faster realtime
-// sync (sub-second) and simpler tree-based data model.
+// Album Ucapan-Ultah V2 — PocketBase backend (AksaraDesigns VPS)
+// Migrated from Firebase RTDB + Cloudinary → self-hosted PocketBase.
+//
+//  • Whole-site content lives as ONE JSON blob in the `config`
+//    collection (one record, key = "album_v2") — same single-blob
+//    model the app used on Firebase, just a different store.
+//  • Uploaded files (foto/video/lagu) go to the `media` collection
+//    and we keep the public file URL in the content blob.
+//  • Realtime sync via pb.collection().subscribe() (sub-second).
+//
+// The public `window.CLOUD` interface is UNCHANGED, so site.js /
+// admin.html / every page keep working without edits.
 // ===========================================================
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
-import {
-  getDatabase, ref, get, set, onValue
-} from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js';
+import PocketBase from 'https://cdn.jsdelivr.net/npm/pocketbase@0.22.1/dist/pocketbase.es.mjs';
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyBK96f_cgTV3-a_3biyOR3EXQPVF2ueGGU',
-  authDomain: 'ucapan-ultah-v2.firebaseapp.com',
-  // Realtime DB URL — auto-guess based on region. If your DB was created
-  // in a non-Asia region, override with the exact URL from Firebase Console.
-  databaseURL: 'https://ucapan-ultah-v2-default-rtdb.asia-southeast1.firebasedatabase.app',
-  projectId: 'ucapan-ultah-v2',
-  storageBucket: 'ucapan-ultah-v2.firebasestorage.app',
-  messagingSenderId: '116948091313',
-  appId: '1:116948091313:web:9aaf7a7547ef780e22bd90',
-};
+// ---------- Resolve PocketBase base URL ----------
+// Each customer is served at  https://aksaradesigns.com/<slug>/...
+// and its PocketBase lives at  https://aksaradesigns.com/<slug>/pb
+// We derive <slug> from the first path segment so the SAME build works
+// for every customer with zero edits. Override with window.POCKETBASE_URL
+// if you ever need to point somewhere else.
+function resolvePbBase() {
+  if (typeof window !== 'undefined' && window.POCKETBASE_URL) return window.POCKETBASE_URL;
+  const { origin, pathname } = location;
+  const segs = pathname.split('/').filter(Boolean);
+  // First segment is the slug, unless we're at the root and it's a file (xxx.html).
+  const slug = (segs[0] && !segs[0].toLowerCase().endsWith('.html')) ? segs[0] : '';
+  return slug ? `${origin}/${slug}/pb` : `${origin}/pb`;
+}
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const pb = new PocketBase(resolvePbBase());
+pb.autoCancellation(false); // we fire overlapping pulls (refocus, realtime) — don't cancel them
 
-// Path: /album_v2/main → holds { content, updatedAt }
-const NODE = ref(db, 'album_v2/main');
+// Collections (create these in PocketBase Admin UI — see README).
+const CONFIG_COLLECTION = 'config';   // fields: key (text), value (text/json)
+const CONFIG_KEY        = 'album_v2'; // the single record holding all site content
+const MEDIA_COLLECTION  = 'media';    // fields: file (file), folder (text, optional)
 
-// ---------- Cloudinary (file storage) ----------
-const CLOUDINARY_CLOUD  = 'dqgelhy0d';
-const CLOUDINARY_PRESET = 'ucapan_uploads';
+let configRecordId = null;            // cached id of the config record
 
-async function cloudinaryUpload(file, folder = 'album-v2/misc') {
+function fileURL(record, filename) {
+  // SDK renamed getUrl → getURL in 0.21; support both just in case.
+  return pb.files.getURL ? pb.files.getURL(record, filename)
+                         : pb.files.getUrl(record, filename);
+}
+function parseValue(v) {
+  if (v == null) return null;
+  if (typeof v === 'object') return v;          // json field type
+  try { return JSON.parse(v); } catch { return null; } // text field type
+}
+
+// ---------- File storage (replaces Cloudinary) ----------
+async function pbUpload(file, folder = 'album-v2/misc') {
   const fd = new FormData();
-  fd.append('file', file);
-  fd.append('upload_preset', CLOUDINARY_PRESET);
+  const name = (file && file.name) ? file.name : `upload-${Date.now()}`;
+  fd.append('file', file, name);
   fd.append('folder', folder);
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
-    { method: 'POST', body: fd }
-  );
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Cloudinary ${res.status}: ${t.slice(0, 200)}`);
-  }
-  return (await res.json()).secure_url;
+  const rec = await pb.collection(MEDIA_COLLECTION).create(fd);
+  return fileURL(rec, rec.file);
 }
 
 async function uploadDataUrl(dataUrl, folder) {
   const r = await fetch(dataUrl);
   const blob = await r.blob();
-  return cloudinaryUpload(blob, folder);
+  return pbUpload(blob, folder);
 }
 
 // ---------- Cloud pull/push ----------
@@ -104,17 +118,16 @@ function applyRemote(cloud) {
 
 async function pullCloud() {
   try {
-    const snap = await get(NODE);
-    if (snap.exists()) {
-      const v = snap.val();
-      const cloud = v && v.content ? v.content : v; // support both wrapped + flat
-      if (cloud) {
-        applyRemote(cloud);
-        return cloud;
-      }
+    const rec = await pb.collection(CONFIG_COLLECTION).getFirstListItem(`key="${CONFIG_KEY}"`);
+    configRecordId = rec.id;
+    const cloud = parseValue(rec.value);
+    if (cloud) {
+      applyRemote(cloud);
+      return cloud;
     }
   } catch (e) {
-    console.warn('[cloud] pull failed:', e?.message || e);
+    // 404 just means nothing has been saved yet — that's fine, stay on defaults.
+    if (e?.status !== 404) console.warn('[cloud] pull failed:', e?.message || e);
   }
   return null;
 }
@@ -125,32 +138,47 @@ async function pushCloud(content) {
     const ser = JSON.stringify(content);
     if (ser === lastPushSerialized) return true;
     lastPushSerialized = ser;
-    await set(NODE, { content, updatedAt: Date.now() });
+
+    // Make sure we know the record id (first save after a fresh load).
+    if (!configRecordId) {
+      try {
+        const rec = await pb.collection(CONFIG_COLLECTION).getFirstListItem(`key="${CONFIG_KEY}"`);
+        configRecordId = rec.id;
+      } catch (e) { if (e?.status !== 404) throw e; }
+    }
+
+    if (configRecordId) {
+      await pb.collection(CONFIG_COLLECTION).update(configRecordId, { value: ser, key: CONFIG_KEY });
+    } else {
+      const rec = await pb.collection(CONFIG_COLLECTION).create({ key: CONFIG_KEY, value: ser });
+      configRecordId = rec.id;
+    }
     return true;
   } catch (e) {
     console.error('[cloud] push failed:', e?.message || e);
+    lastPushSerialized = null; // allow retry on next save
     return false;
   }
 }
 
-// Expose
+// Expose — same shape as before so the rest of the app is untouched.
 window.CLOUD = {
   pullCloud,
   pushCloud,
-  upload: cloudinaryUpload,
+  upload: pbUpload,
   uploadDataUrl,
   ready: pullCloud(),
+  pb, // handy for debugging in the console
 };
 window.dispatchEvent(new CustomEvent('cloud-init'));
 
-// Realtime subscribe — RTDB is sub-second sync
+// Realtime subscribe — PocketBase pushes record changes over SSE (sub-second).
 try {
-  onValue(NODE, (snap) => {
-    if (!snap.exists()) return;
-    const v = snap.val();
-    const cloud = v && v.content ? v.content : v;
+  pb.collection(CONFIG_COLLECTION).subscribe('*', (e) => {
+    if (!e || !e.record || e.record.key !== CONFIG_KEY) return;
+    const cloud = parseValue(e.record.value);
     if (cloud) applyRemote(cloud);
-  }, (err) => console.warn('[cloud] subscribe failed:', err?.message || err));
+  });
 } catch (e) {
   console.warn('[cloud] no realtime subscribe:', e?.message || e);
 }

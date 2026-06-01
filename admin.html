@@ -165,8 +165,8 @@
     inp.addEventListener('input',()=>oninput(inp.value));
     f.appendChild(inp);return f;
   }
-  /* uploadField: pick file from device → push to Cloudinary → store secure_url
-     kind = 'img' | 'vid' (controls accept + preview + folder) */
+  /* uploadField: pick file from device → upload to PocketBase → store file URL
+     kind = 'img' | 'vid' | 'aud' (controls accept + preview + folder) */
   function uploadField(label,val,oninput,kind){
     const accept = kind==='vid' ? 'video/*' : kind==='aud' ? 'audio/*' : 'image/*';
     const folder = kind==='vid' ? 'album-v2/videos' : kind==='aud' ? 'album-v2/audio' : 'album-v2/images';
